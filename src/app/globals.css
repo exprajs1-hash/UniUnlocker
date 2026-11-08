@@ -1,0 +1,341 @@
+@import "tailwindcss";
+
+/*
+ * Global theme. Every colour on the site comes from these variables, so changing
+ * a value here re-themes the whole website. Each is also a Tailwind colour, for
+ * example --primary gives bg-primary, text-primary and border-primary.
+ */
+:root {
+  --background: #030817;
+  --surface: #07152f;
+  --surface-raised: #0b1f45;
+  --primary: #087bff;
+  --cyan: #00e5ff;
+  --purple: #792cff;
+  --foreground: #ffffff;
+  --muted: #a9b8d6;
+  --line: rgb(0 190 255 / 0.55);
+
+  --status-online: #2bea5c;
+  --status-offline: #ff3d4f;
+  --status-maintenance: #ff9a1f;
+
+  /* Admin panel: a calmer palette, deliberately separate from the public neon look. */
+  --admin-bg: #0b0f1a;
+  --admin-panel: #121826;
+  --admin-raised: #1a2233;
+  --admin-line: #273046;
+  --admin-text: #e7ebf3;
+  --admin-muted: #94a0b8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-primary: var(--primary);
+  --color-cyan: var(--cyan);
+  --color-purple: var(--purple);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-status-online: var(--status-online);
+  --color-status-offline: var(--status-offline);
+  --color-status-maintenance: var(--status-maintenance);
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-panel: var(--admin-panel);
+  --color-admin-raised: var(--admin-raised);
+  --color-admin-line: var(--admin-line);
+  --color-admin-text: var(--admin-text);
+  --color-admin-muted: var(--admin-muted);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+dialog::backdrop {
+  background: rgb(2 6 18 / 0.75);
+  backdrop-filter: blur(4px);
+}
+
+@layer components {
+  /* Public site ---------------------------------------------------------- */
+  .site-bg {
+    background:
+      url("/images/neon-curves.svg") center top / 100% 1500px repeat-y,
+      radial-gradient(60rem 30rem at 85% 8%, rgb(8 123 255 / 0.26), transparent 70%),
+      radial-gradient(45rem 30rem at -5% 30%, rgb(121 44 255 / 0.18), transparent 70%),
+      radial-gradient(60rem 34rem at 100% 62%, rgb(0 229 255 / 0.13), transparent 70%),
+      radial-gradient(50rem 30rem at 0% 88%, rgb(8 123 255 / 0.2), transparent 70%), var(--background);
+  }
+
+  .neon-card {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: linear-gradient(160deg, rgb(11 31 69 / 0.85), rgb(5 14 36 / 0.92));
+    box-shadow:
+      0 0 18px rgb(8 123 255 / 0.18),
+      inset 0 0 22px rgb(0 229 255 / 0.05);
+    transition:
+      transform 0.25s ease,
+      border-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+  /* Shifts warm stock photos toward the site's blue palette. Place over an image. */
+  .photo-tint {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--primary), var(--purple));
+    opacity: 0.55;
+    mix-blend-mode: color;
+    pointer-events: none;
+  }
+  .neon-card-hover:hover {
+    transform: translateY(-4px);
+    border-color: var(--cyan);
+    box-shadow:
+      0 0 30px rgb(0 229 255 / 0.32),
+      inset 0 0 26px rgb(0 229 255 / 0.08);
+  }
+
+  .btn-neon,
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 2.9rem;
+    padding: 0.6rem 1.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .btn-neon {
+    background: linear-gradient(100deg, var(--primary), #00b4ff);
+    box-shadow: 0 0 22px rgb(8 123 255 / 0.55);
+  }
+  .btn-neon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 34px rgb(0 200 255 / 0.75);
+  }
+  .btn-neon:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+  }
+  .btn-outline {
+    border: 1px solid rgb(255 255 255 / 0.55);
+    background: rgb(3 8 23 / 0.45);
+  }
+  .btn-outline:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgb(0 229 255 / 0.4);
+  }
+
+  .neon-input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: rgb(3 8 23 / 0.7);
+    padding: 0.7rem 0.9rem;
+    color: var(--foreground);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .neon-input::placeholder {
+    color: rgb(169 184 214 / 0.6);
+  }
+  .neon-input:focus {
+    border-color: var(--cyan);
+    outline: none;
+    box-shadow: 0 0 14px rgb(0 229 255 / 0.3);
+  }
+
+  .text-neon {
+    color: var(--cyan);
+    text-shadow: 0 0 22px rgb(0 229 255 / 0.45);
+  }
+
+  .skeleton {
+    border-radius: 0.5rem;
+    background: linear-gradient(
+      100deg,
+      rgb(120 160 230 / 0.08) 30%,
+      rgb(120 160 230 / 0.2) 50%,
+      rgb(120 160 230 / 0.08) 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* Admin panel ---------------------------------------------------------- */
+  .admin-card {
+    border: 1px solid var(--admin-line);
+    border-radius: 0.75rem;
+    background: var(--admin-panel);
+  }
+  .admin-input {
+    width: 100%;
+    border: 1px solid var(--admin-line);
+    border-radius: 0.5rem;
+    background: var(--admin-bg);
+    padding: 0.55rem 0.75rem;
+    color: var(--admin-text);
+    font-size: 0.875rem;
+  }
+  .admin-input:focus {
+    border-color: var(--primary);
+    outline: 2px solid rgb(8 123 255 / 0.35);
+    outline-offset: 0;
+  }
+  .admin-input[aria-invalid="true"] {
+    border-color: var(--status-offline);
+  }
+  .admin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 0.15s ease;
+  }
+  .admin-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .admin-btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .admin-btn-primary:hover:not(:disabled) {
+    background: #2a8dff;
+  }
+  .admin-btn-secondary {
+    border: 1px solid var(--admin-line);
+    background: var(--admin-raised);
+    color: var(--admin-text);
+  }
+  .admin-btn-secondary:hover:not(:disabled) {
+    background: var(--admin-line);
+  }
+  .admin-btn-danger {
+    background: #c9293a;
+    color: #fff;
+  }
+  .admin-btn-danger:hover:not(:disabled) {
+    background: #df3749;
+  }
+  .admin-icon-btn {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: var(--admin-muted);
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .admin-icon-btn:hover:not(:disabled) {
+    background: var(--admin-raised);
+    color: var(--admin-text);
+  }
+  .admin-icon-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  60% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 14s linear infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-out infinite;
+}
+
+/* Endless left scroll used by <Marquee>: slides by one of the two identical copies. */
+@keyframes marquee-left {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee-left 30s linear infinite;
+}
+
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+  .marquee-track {
+    animation: none;
+  }
+}
