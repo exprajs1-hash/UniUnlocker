@@ -10,8 +10,9 @@ import { Partner } from "@/models/Partner";
 import { Project } from "@/models/Project";
 import { Server } from "@/models/Server";
 import { Service } from "@/models/Service";
+import { Tool } from "@/models/Tool";
 import { WebsiteSettings } from "@/models/WebsiteSettings";
-import type { AboutDTO, PartnerDTO, ProjectDTO, ServerDTO, ServiceDTO, WebsiteSettingsDTO } from "@/types";
+import type { AboutDTO, PartnerDTO, ProjectDTO, ServerDTO, ServiceDTO, ToolDTO, WebsiteSettingsDTO } from "@/types";
 
 /**
  * Public read layer. Everything is read from MongoDB at request time, so admin
@@ -78,6 +79,17 @@ export const getEnabledPartners = cache(() =>
     async () =>
       serializeMany<PartnerDTO>(
         await Partner.find({ enabled: true }).sort({ displayOrder: 1, createdAt: 1 }).lean(),
+      ),
+    [],
+  ),
+);
+
+export const getEnabledTools = cache(() =>
+  readOrFallback<ToolDTO[]>(
+    "tools",
+    async () =>
+      serializeMany<ToolDTO>(
+        await Tool.find({ enabled: true }).sort({ displayOrder: 1, createdAt: 1 }).lean(),
       ),
     [],
   ),

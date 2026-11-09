@@ -2,10 +2,12 @@ import { BadgeCheck, CircleCheck } from "lucide-react";
 import { Reveal } from "@/components/ui/reveal";
 import { SafeImage } from "@/components/ui/safe-image";
 import { getAbout } from "@/lib/data";
+import { STATUS_META } from "@/lib/server-status";
 
 export async function AboutSection() {
   const about = await getAbout();
   const [lead, ...rest] = about.title.split(" ");
+  const status = STATUS_META[about.online ? "online" : "offline"];
   return (
     <section id="about" className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-14 md:grid-cols-2 lg:gap-14 lg:px-8">
       <Reveal>
@@ -39,6 +41,14 @@ export async function AboutSection() {
             <span aria-hidden className="mt-2 block h-1 w-20 rounded bg-cyan shadow-[0_0_10px_var(--cyan)]" />
           </div>
         </div>
+
+        <p className={`mt-5 inline-flex items-center gap-2 rounded-full border bg-surface/70 px-3 py-1 text-sm font-medium ${status.border} ${status.text}`}>
+          <span aria-hidden className="relative flex size-2.5">
+            {about.online && <span className={`absolute inline-flex size-full rounded-full opacity-75 motion-safe:animate-ping ${status.dot}`} />}
+            <span className={`relative inline-flex size-2.5 rounded-full ${status.dot}`} />
+          </span>
+          {status.label}
+        </p>
 
         <p className="mt-5 leading-relaxed whitespace-pre-line text-foreground/90">{about.description}</p>
 

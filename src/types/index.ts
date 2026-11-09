@@ -46,6 +46,16 @@ export interface PartnerDTO {
   enabled: boolean;
 }
 
+export interface ToolDTO {
+  id: string;
+  name: string;
+  logo: string;
+  /** Where the card links to; blank means the logo is not a link. */
+  url: string;
+  displayOrder: number;
+  enabled: boolean;
+}
+
 export interface ServerDTO {
   id: string;
   name: string;
@@ -71,6 +81,8 @@ export interface AboutDTO {
   signature: string;
   skills: string[];
   features: string[];
+  /** Set by the admin from the panel header; drives the Online/Offline badge in the About section. */
+  online: boolean;
 }
 
 export interface SocialLinks {
@@ -79,6 +91,11 @@ export interface SocialLinks {
   linkedin: string;
   github: string;
   x: string;
+}
+
+export interface UtilityLink {
+  name: string;
+  url: string;
 }
 
 export interface WebsiteSettingsDTO {
@@ -98,8 +115,8 @@ export interface WebsiteSettingsDTO {
   whatsappNumber: string;
   /** Username (without @) or a t.me link. */
   telegramUsername: string;
-  /** Where the "Get Driver" button goes; blank hides the button. */
-  driverUrl: string;
+  /** Links in the header's Utility dropdown; empty hides the dropdown. */
+  utilityLinks: UtilityLink[];
   /** How many BDT one USD is worth, used to fill in a server price given in only one currency. */
   usdToBdtRate: number;
   social: SocialLinks;

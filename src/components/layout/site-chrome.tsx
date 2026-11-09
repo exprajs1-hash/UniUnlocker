@@ -12,7 +12,7 @@ export async function SiteNavbar() {
     <Navbar
       brand={<BrandLogo siteName={siteName} tagline={tagline} logo={logo} />}
       actions={{
-        driverUrl: settings.driverUrl || null,
+        utilityLinks: settings.utilityLinks,
         whatsappUrl: settings.whatsappNumber.replace(/\D/g, "")
           ? whatsappLink(settings.whatsappNumber, `Hi ${siteName}, I'd like to hire you.`)
           : null,

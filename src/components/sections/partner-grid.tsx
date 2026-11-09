@@ -7,7 +7,7 @@ import type { PartnerDTO } from "@/types";
 
 export const PARTNER_COLUMNS = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5";
 
-function PartnerCard({ partner }: { partner: PartnerDTO }) {
+export function PartnerCard({ partner }: { partner: Pick<PartnerDTO, "name" | "logo" | "url"> }) {
   const content = (
     <>
       <span className="flex h-28 w-full items-center justify-center">

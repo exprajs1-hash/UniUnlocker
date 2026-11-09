@@ -14,6 +14,7 @@ const AboutSchema = new Schema<IAbout>(
     signature: String,
     skills: [String],
     features: [String],
+    online: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

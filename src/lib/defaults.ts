@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: WebsiteSettingsDTO = {
   contactAddress: "",
   whatsappNumber: "",
   telegramUsername: "",
-  driverUrl: "",
+  utilityLinks: [],
   usdToBdtRate: DEFAULT_USD_TO_BDT,
   social: { facebook: "", youtube: "", linkedin: "", github: "", x: "" },
   footerText: "All rights reserved.",
@@ -39,4 +39,5 @@ export const DEFAULT_ABOUT: AboutDTO = {
   signature: "UniUnlocker",
   skills: ["Android", "iOS", "Firmware", "Software Troubleshooting", "App Development"],
   features: ["Expert in Android & iOS", "Fast & Reliable Service", "Client Satisfaction First"],
+  online: false,
 };

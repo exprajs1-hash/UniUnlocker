@@ -3,8 +3,10 @@
 import {
   ExternalLink,
   FolderKanban,
+  Hammer,
   Handshake,
   Info,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -17,6 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { OnlineToggle } from "@/components/admin/online-toggle";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
 
@@ -25,10 +28,12 @@ const NAV = [
   { href: "/admin/servers", label: "Servers", icon: Server },
   { href: "/admin/projects", label: "Projects", icon: FolderKanban },
   { href: "/admin/services", label: "Services", icon: Wrench },
+  { href: "/admin/tools", label: "Tools", icon: Hammer },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
   { href: "/admin/about", label: "About", icon: Info },
   { href: "/admin/messages", label: "Messages", icon: Mail },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/password", label: "Change password", icon: KeyRound },
 ];
 
 export function AdminShell({ email, children }: { email: string; children: ReactNode }) {
@@ -108,6 +113,9 @@ export function AdminShell({ email, children }: { email: string; children: React
             <Menu aria-hidden className="size-5" />
           </button>
           <span className="ml-auto truncate text-sm text-admin-muted">{email}</span>
+          <span className="shrink-0">
+            <OnlineToggle />
+          </span>
           <button type="button" onClick={signOut} disabled={signingOut} className="admin-btn admin-btn-secondary shrink-0">
             <LogOut aria-hidden className="size-4" /> Sign out
           </button>

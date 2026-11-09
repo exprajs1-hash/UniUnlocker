@@ -63,6 +63,25 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required").max(200),
 });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password").max(200),
+    newPassword: z
+      .string()
+      .min(12, "Use at least 12 characters")
+      // bcrypt ignores everything after 72 bytes, so a longer password would be silently cut.
+      .refine((value) => new TextEncoder().encode(value).length <= 72, "Use at most 72 characters"),
+    confirmPassword: z.string().min(1, "Confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ["confirmPassword"],
+    error: "Passwords do not match",
+  })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    path: ["newPassword"],
+    error: "Choose a password different from your current one",
+  });
+
 export const projectSchema = z.object({
   title: text(120, "Title"),
   slug: z
@@ -107,6 +126,10 @@ export const partnerSchema = z.object({
 
 export const partnerPatchSchema = z.object({ enabled: z.boolean() }).partial();
 
+export const toolSchema = partnerSchema;
+
+export const toolPatchSchema = partnerPatchSchema;
+
 export const serverSchema = z.object({
   name: text(60, "Name"),
   description: optionalText(300),
@@ -132,6 +155,9 @@ export const aboutSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
   features: z.array(z.string().trim().min(1).max(100)).max(12).default([]),
 });
+
+/** Separate from aboutSchema, so saving the About form cannot overwrite the live status. */
+export const aboutPatchSchema = z.object({ online: z.boolean() });
 
 export const settingsSchema = z.object({
   siteName: text(60, "Website name"),
@@ -159,7 +185,15 @@ export const settingsSchema = z.object({
     .transform((value) => value.replace(/^(?:https?:\/\/)?(?:t\.me|telegram\.me)\//i, "").replace(/^@/, ""))
     .pipe(z.string().regex(/^(?:[A-Za-z0-9_]{4,32})?$/, "Enter a Telegram username like uniunlocker, or a t.me link"))
     .default(""),
-  driverUrl: optionalUrl,
+  utilityLinks: z
+    .array(
+      z.object({
+        name: text(40, "Name"),
+        url: optionalUrl.refine((value) => value.length > 0, "Add a link"),
+      }),
+    )
+    .max(20, "Add at most 20 links")
+    .default([]),
   usdToBdtRate: z.coerce
     .number({ error: "Enter a number, e.g. 130" })
     .gt(0, "The rate must be more than 0")

@@ -21,7 +21,7 @@ const WebsiteSettingsSchema = new Schema<IWebsiteSettings>(
     contactAddress: String,
     whatsappNumber: String,
     telegramUsername: String,
-    driverUrl: String,
+    utilityLinks: [{ _id: false, name: String, url: String }],
     usdToBdtRate: Number,
     social: {
       facebook: String,

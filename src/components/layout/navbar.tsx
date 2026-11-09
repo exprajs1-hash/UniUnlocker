@@ -1,21 +1,22 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, Menu, Send, X } from "lucide-react";
+import { ChevronDown, Menu, Send, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BrandIcon } from "@/components/ui/social-icons";
+import type { UtilityLink } from "@/types";
 
 const LINKS = [
   { id: "home", label: "Home" },
   { id: "services", label: "Services" },
   { id: "servers", label: "Servers" },
-  { id: "partners", label: "Partners" },
+  { id: "tools", label: "Tools" },
 ];
 
 export interface HeaderActions {
-  driverUrl: string | null;
+  utilityLinks: UtilityLink[];
   whatsappUrl: string | null;
   telegramUrl: string | null;
 }
@@ -50,7 +51,18 @@ function ChatIconLink({ kind, href, onClick }: { kind: "whatsapp" | "telegram"; 
 }
 
 /** Opens on hover for mouse users and on tap for touch users; Escape or an outside tap closes it. */
-function HireMeMenu({ options }: { options: ReturnType<typeof chatOptions> }) {
+function HoverMenu({
+  label,
+  icon,
+  buttonClass,
+  children,
+}: {
+  label: string;
+  icon: ReactNode;
+  buttonClass: string;
+  /** Receives a function that closes the menu, for links inside it. */
+  children: (close: () => void) => ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -82,9 +94,9 @@ function HireMeMenu({ options }: { options: ReturnType<typeof chatOptions> }) {
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="btn-neon min-h-10! px-5! text-sm"
+        className={`${buttonClass} min-h-10! px-5! text-sm`}
       >
-        Hire Me <Send aria-hidden className="size-4" />
+        {label} {icon}
       </button>
       <AnimatePresence>
         {open && (
@@ -96,15 +108,60 @@ function HireMeMenu({ options }: { options: ReturnType<typeof chatOptions> }) {
             transition={{ duration: 0.15 }}
             className="absolute top-full right-0 z-50 pt-2"
           >
-            <div className="flex gap-2 rounded-2xl border border-line/60 bg-surface/95 p-2 shadow-[0_8px_30px_rgb(0_0_0/0.5)] backdrop-blur-md">
-              {options.map(({ key, href }) => (
-                <ChatIconLink key={key} kind={key} href={href} onClick={() => setOpen(false)} />
-              ))}
+            <div className="rounded-2xl border border-line/60 bg-surface/95 p-2 shadow-[0_8px_30px_rgb(0_0_0/0.5)] backdrop-blur-md">
+              {children(() => setOpen(false))}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function HireMeMenu({ options }: { options: ReturnType<typeof chatOptions> }) {
+  return (
+    <HoverMenu label="Hire Me" icon={<Send aria-hidden className="size-4" />} buttonClass="btn-neon">
+      {(close) => (
+        <div className="flex gap-2">
+          {options.map(({ key, href }) => (
+            <ChatIconLink key={key} kind={key} href={href} onClick={close} />
+          ))}
+        </div>
+      )}
+    </HoverMenu>
+  );
+}
+
+function UtilityMenu({ links }: { links: UtilityLink[] }) {
+  return (
+    <HoverMenu
+      label="Utility"
+      icon={
+        <>
+          <Wrench aria-hidden className="size-4" />
+          <ChevronDown aria-hidden className="size-4" />
+        </>
+      }
+      buttonClass="btn-outline"
+    >
+      {(close) => (
+        <ul className="max-h-80 w-56 overflow-y-auto">
+          {links.map(({ name, url }) => (
+            <li key={`${name}-${url}`}>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={close}
+                className="block rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-primary/15 hover:text-cyan"
+              >
+                {name}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </HoverMenu>
   );
 }
 
@@ -168,11 +225,7 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
         <div className="flex items-center gap-2">
           <div className="hidden items-center gap-2 sm:flex">
             {chats.length > 0 && <HireMeMenu options={chats} />}
-            {actions.driverUrl && (
-              <a href={actions.driverUrl} target="_blank" rel="noopener noreferrer" className="btn-outline min-h-10! px-5! text-sm">
-                <Download aria-hidden className="size-4" /> Get Driver
-              </a>
-            )}
+            {actions.utilityLinks.length > 0 && <UtilityMenu links={actions.utilityLinks} />}
           </div>
           <button
             type="button"
@@ -205,21 +258,26 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
               </li>
             ))}
             {/* The header buttons are hidden on small phones, so they are offered here instead. */}
-            {(actions.driverUrl || chats.length > 0) && (
-              <li className="flex flex-wrap items-center gap-3 border-t border-line/30 py-4 sm:hidden">
-                {chats.length > 0 && (
-                  <span className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted">Hire Me:</span>
-                    {chats.map(({ key, href }) => (
-                      <ChatIconLink key={key} kind={key} href={href} onClick={() => setOpen(false)} />
-                    ))}
-                  </span>
-                )}
-                {actions.driverUrl && (
-                  <a href={actions.driverUrl} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="btn-outline min-h-10! px-5! text-sm">
-                    <Download aria-hidden className="size-4" /> Get Driver
-                  </a>
-                )}
+            {chats.length > 0 && (
+              <li className="flex items-center gap-2 border-t border-line/30 py-4 sm:hidden">
+                <span className="text-sm font-medium text-muted">Hire Me:</span>
+                {chats.map(({ key, href }) => (
+                  <ChatIconLink key={key} kind={key} href={href} onClick={() => setOpen(false)} />
+                ))}
+              </li>
+            )}
+            {actions.utilityLinks.length > 0 && (
+              <li className="border-t border-line/30 py-3 sm:hidden">
+                <p className="text-sm font-medium text-muted">Utility</p>
+                <ul>
+                  {actions.utilityLinks.map(({ name, url }) => (
+                    <li key={`${name}-${url}`}>
+                      <a href={url} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="block py-2 font-medium hover:text-cyan">
+                        {name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </li>
             )}
           </motion.ul>

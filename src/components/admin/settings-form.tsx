@@ -1,12 +1,13 @@
 "use client";
 
+import { Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { ListSkeleton, LoadError, PageHeader, TextAreaField, TextField } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/image-field";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
-import type { SocialLinks, WebsiteSettingsDTO } from "@/types";
+import type { SocialLinks, UtilityLink, WebsiteSettingsDTO } from "@/types";
 
 const SOCIAL_FIELDS: Array<{ key: keyof SocialLinks; label: string }> = [
   { key: "facebook", label: "Facebook" },
@@ -54,7 +55,18 @@ function SettingsEditor({ initial }: { initial: WebsiteSettingsDTO }) {
     }
   }
 
-  const text = (key: Exclude<keyof WebsiteSettingsDTO, "social" | "usdToBdtRate">, label: string, hint?: string, placeholder?: string) => (
+  const updateLink = (index: number, field: keyof UtilityLink, value: string) => {
+    set("utilityLinks", draft.utilityLinks.map((link, i) => (i === index ? { ...link, [field]: value } : link)));
+    setErrors((current) => clearFieldError(current, `utilityLinks.${index}.${field}`));
+  };
+
+  const removeLink = (index: number) => {
+    set("utilityLinks", draft.utilityLinks.filter((_, i) => i !== index));
+    // Later rows shift up, so their messages would no longer line up.
+    setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith("utilityLinks."))));
+  };
+
+  const text = (key: Exclude<keyof WebsiteSettingsDTO, "social" | "usdToBdtRate" | "utilityLinks">, label: string, hint?: string, placeholder?: string) => (
     <TextField label={label} value={draft[key]} error={errors[key]} hint={hint} placeholder={placeholder} onChange={(value) => set(key, value)} />
   );
 
@@ -102,8 +114,24 @@ function SettingsEditor({ initial }: { initial: WebsiteSettingsDTO }) {
         />
       </Section>
 
-      <Section title="Header buttons">
-        {text("driverUrl", "Get Driver link", "Where the Get Driver button goes (e.g. a Google Drive or download page). Blank hides the button.", "https://")}
+      <Section title="Utility menu" description="Each link appears in the Utility dropdown in the website header. With no links, the dropdown is hidden.">
+        {draft.utilityLinks.length > 0 && (
+          <ul className="space-y-3">
+            {draft.utilityLinks.map((link, index) => (
+              <li key={index} className="grid items-start gap-3 sm:grid-cols-[1fr_2fr_auto]">
+                <TextField label="Name" value={link.name} error={errors[`utilityLinks.${index}.name`]} placeholder="e.g. USB Driver" onChange={(value) => updateLink(index, "name", value)} />
+                <TextField label="Link" type="url" value={link.url} error={errors[`utilityLinks.${index}.url`]} placeholder="https://" onChange={(value) => updateLink(index, "url", value)} />
+                <button type="button" aria-label={`Remove ${link.name || "this link"}`} onClick={() => removeLink(index)} className="admin-icon-btn hover:text-status-offline! sm:mt-7">
+                  <Trash2 aria-hidden className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {errors.utilityLinks && <p className="text-xs text-status-offline">{errors.utilityLinks}</p>}
+        <button type="button" onClick={() => set("utilityLinks", [...draft.utilityLinks, { name: "", url: "" }])} className="admin-btn admin-btn-secondary">
+          <Plus aria-hidden className="size-4" /> Add link
+        </button>
       </Section>
 
       <Section title="Social links" description="Only networks with a link are shown on the website.">

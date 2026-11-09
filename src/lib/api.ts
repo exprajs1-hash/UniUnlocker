@@ -9,6 +9,7 @@ export class ApiError extends Error {
     public readonly status: number,
     message: string,
     public readonly headers?: Record<string, string>,
+    public readonly fieldErrors?: Record<string, string>,
   ) {
     super(message);
   }
@@ -41,7 +42,7 @@ function fieldErrors(error: z.ZodError): Record<string, string> {
 
 function toResponse(error: unknown): NextResponse {
   if (error instanceof ApiError) {
-    return fail(error.status, error.message, { headers: error.headers });
+    return fail(error.status, error.message, { headers: error.headers, fieldErrors: error.fieldErrors });
   }
   if (error instanceof z.ZodError) {
     return fail(422, "Please check the highlighted fields.", { fieldErrors: fieldErrors(error) });

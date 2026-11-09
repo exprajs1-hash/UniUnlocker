@@ -72,9 +72,10 @@ type TextProps = {
   type?: string;
   placeholder?: string;
   required?: boolean;
+  autoComplete?: string;
 };
 
-export function TextField({ label, value, onChange, error, hint, type = "text", placeholder, required }: TextProps) {
+export function TextField({ label, value, onChange, error, hint, type = "text", placeholder, required, autoComplete }: TextProps) {
   return (
     <FormField label={label} error={error} hint={hint}>
       {(props) => (
@@ -84,6 +85,7 @@ export function TextField({ label, value, onChange, error, hint, type = "text", 
           value={value}
           placeholder={placeholder}
           required={required}
+          autoComplete={autoComplete}
           onChange={(event) => onChange(event.target.value)}
           className="admin-input"
         />
@@ -99,7 +101,7 @@ export function TextAreaField({
   error,
   hint,
   rows = 4,
-}: Omit<TextProps, "type" | "placeholder" | "required"> & { rows?: number }) {
+}: Omit<TextProps, "type" | "placeholder" | "required" | "autoComplete"> & { rows?: number }) {
   return (
     <FormField label={label} error={error} hint={hint}>
       {(props) => (
