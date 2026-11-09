@@ -135,7 +135,7 @@ function HireMeMenu({ options }: { options: ReturnType<typeof chatOptions> }) {
 function UtilityMenu({ links }: { links: UtilityLink[] }) {
   return (
     <HoverMenu
-      label="Utility"
+      label="Add-On"
       icon={
         <>
           <Wrench aria-hidden className="size-4" />
@@ -268,7 +268,7 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
             )}
             {actions.utilityLinks.length > 0 && (
               <li className="border-t border-line/30 py-3 sm:hidden">
-                <p className="text-sm font-medium text-muted">Utility</p>
+                <p className="text-sm font-medium text-muted">Add-On</p>
                 <ul>
                   {actions.utilityLinks.map(({ name, url }) => (
                     <li key={`${name}-${url}`}>

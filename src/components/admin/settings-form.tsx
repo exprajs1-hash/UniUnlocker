@@ -114,7 +114,7 @@ function SettingsEditor({ initial }: { initial: WebsiteSettingsDTO }) {
         />
       </Section>
 
-      <Section title="Utility menu" description="Each link appears in the Utility dropdown in the website header. With no links, the dropdown is hidden.">
+      <Section title="Add-On menu" description="Each link appears in the Add-On dropdown in the website header. With no links, the dropdown is hidden.">
         {draft.utilityLinks.length > 0 && (
           <ul className="space-y-3">
             {draft.utilityLinks.map((link, index) => (

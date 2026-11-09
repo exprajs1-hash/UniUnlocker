@@ -115,7 +115,7 @@ export interface WebsiteSettingsDTO {
   whatsappNumber: string;
   /** Username (without @) or a t.me link. */
   telegramUsername: string;
-  /** Links in the header's Utility dropdown; empty hides the dropdown. */
+  /** Links in the header's Add-On dropdown; empty hides the dropdown. */
   utilityLinks: UtilityLink[];
   /** How many BDT one USD is worth, used to fill in a server price given in only one currency. */
   usdToBdtRate: number;
