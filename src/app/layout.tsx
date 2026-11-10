@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Great_Vibes, Inter, Sora } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { SEO_KEYWORDS, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const body = Inter({ variable: "--font-body", subsets: ["latin"] });
 const heading = Sora({ variable: "--font-heading", subsets: ["latin"] });
+const signature = Great_Vibes({ variable: "--font-signature", subsets: ["latin"], weight: "400" });
 
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 const bingVerification = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION;
@@ -33,7 +34,7 @@ export const viewport: Viewport = { themeColor: "#030817" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${body.variable} ${heading.variable} h-full antialiased`}>
+    <html lang="en" className={`${body.variable} ${heading.variable} ${signature.variable} h-full antialiased`}>
       <body className="min-h-full">
         <ToastProvider>{children}</ToastProvider>
       </body>

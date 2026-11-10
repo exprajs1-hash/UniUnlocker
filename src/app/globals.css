@@ -50,6 +50,7 @@
   --color-admin-muted: var(--admin-muted);
   --font-sans: var(--font-body);
   --font-display: var(--font-heading);
+  --font-signature: var(--font-signature);
 }
 
 html {
@@ -288,6 +289,44 @@ dialog::backdrop {
 @keyframes shimmer {
   to {
     background-position: -200% 0;
+  }
+}
+
+/* Hero highlight: a cyan → blue → purple gradient that flows through the text, with a neon glow. */
+.text-gradient-flow {
+  background: linear-gradient(90deg, #00e5ff, #4aa3ff, #c04dff, #00e5ff) 0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgb(0 229 255 / 0.55));
+  animation: gradient-flow 6s linear infinite;
+}
+
+@keyframes gradient-flow {
+  to {
+    background-position: 300% 0;
+  }
+}
+
+/* Signature: written left to right like a pen stroke, once on load. */
+.signature-write {
+  clip-path: inset(0 100% 0 0);
+  animation: signature-write 2.2s 0.5s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+@keyframes signature-write {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient-flow {
+    animation: none;
+  }
+  .signature-write {
+    clip-path: none;
+    animation: none;
   }
 }
 

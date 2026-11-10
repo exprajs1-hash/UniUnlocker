@@ -22,11 +22,13 @@ export async function HeroSection() {
             <span className="sr-only">{settings.siteName} – </span>
             {settings.heroTitle}
             {settings.heroHighlight && (
-              <span className="text-neon mt-1 block">{settings.heroHighlight}</span>
+              <span className="text-gradient-flow mt-1 block pb-1">{settings.heroHighlight}</span>
             )}
           </h1>
           {settings.heroSubtitle && (
-            <p className="mt-6 text-xl font-semibold">{settings.heroSubtitle}</p>
+            <p className="signature-write mt-4 w-fit pr-4 font-signature text-3xl leading-tight text-foreground drop-shadow-[0_0_12px_rgb(0_229_255/0.55)] sm:text-4xl">
+              {settings.heroSubtitle}
+            </p>
           )}
           {settings.heroDescription && (
             <p className="mt-3 max-w-lg text-lg text-muted">{settings.heroDescription}</p>
