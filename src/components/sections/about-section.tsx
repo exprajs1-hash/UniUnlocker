@@ -26,7 +26,29 @@ export async function AboutSection() {
       <Reveal delay={0.1}>
         <div className="flex items-center gap-4">
           {about.profileImage && (
-            <SafeImage src={about.profileImage} alt="" width={64} height={64} className="size-16 rounded-full border-2 border-cyan object-cover" />
+            <span className="relative shrink-0">
+              {/* Gradient ring with a gap, so the photo sits fully inside the circle. */}
+              <span className="block rounded-full bg-linear-to-br from-cyan to-primary p-[3px] shadow-[0_0_18px_rgb(0_229_255/0.45)]">
+                <span className="block rounded-full bg-background p-[3px]">
+                  <SafeImage
+                    src={about.profileImage}
+                    alt=""
+                    width={192}
+                    height={192}
+                    className="size-20 rounded-full object-cover object-[center_20%] sm:size-24"
+                  />
+                </span>
+              </span>
+              {/* Messenger-style presence dot on the avatar. */}
+              {about.online && (
+                <span
+                  role="img"
+                  aria-label="Online"
+                  title="Online"
+                  className="absolute right-1 bottom-1 size-5 rounded-full bg-status-online ring-4 ring-background sm:right-1.5 sm:bottom-1.5"
+                />
+              )}
+            </span>
           )}
           <div>
             <h2 className="font-display text-3xl font-bold sm:text-4xl">
@@ -42,13 +64,16 @@ export async function AboutSection() {
           </div>
         </div>
 
-        <p className={`mt-5 inline-flex items-center gap-2 rounded-full border bg-surface/70 px-3 py-1 text-sm font-medium ${status.border} ${status.text}`}>
-          <span aria-hidden className="relative flex size-2.5">
-            {about.online && <span className={`absolute inline-flex size-full rounded-full opacity-75 motion-safe:animate-ping ${status.dot}`} />}
-            <span className={`relative inline-flex size-2.5 rounded-full ${status.dot}`} />
-          </span>
-          {status.label}
-        </p>
+        {/* With an avatar, presence is the dot on it (Messenger style); otherwise show the pill. */}
+        {!about.profileImage && (
+          <p className={`mt-5 inline-flex items-center gap-2 rounded-full border bg-surface/70 px-3 py-1 text-sm font-medium ${status.border} ${status.text}`}>
+            <span aria-hidden className="relative flex size-2.5">
+              {about.online && <span className={`absolute inline-flex size-full rounded-full opacity-75 motion-safe:animate-ping ${status.dot}`} />}
+              <span className={`relative inline-flex size-2.5 rounded-full ${status.dot}`} />
+            </span>
+            {status.label}
+          </p>
+        )}
 
         <p className="mt-5 leading-relaxed whitespace-pre-line text-foreground/90">{about.description}</p>
 

@@ -165,6 +165,24 @@ function UtilityMenu({ links }: { links: UtilityLink[] }) {
   );
 }
 
+/** Teaser for the upcoming Tool Rent feature. Not a link, since there is nowhere to go yet. */
+function ToolRentBadge() {
+  return (
+    <span className="relative inline-flex items-center gap-2 rounded-full bg-linear-to-r from-cyan via-primary to-purple p-px shadow-[0_0_18px_rgb(121_44_255/0.45)]">
+      <span className="inline-flex items-center gap-2 rounded-full bg-background px-3.5 py-2 text-sm font-semibold whitespace-nowrap">
+        <span aria-hidden className="relative flex size-2">
+          <span className="absolute inline-flex size-full rounded-full bg-cyan opacity-75 motion-safe:animate-ping" />
+          <span className="relative inline-flex size-2 rounded-full bg-cyan" />
+        </span>
+        Tools Rent
+        <span className="rounded-full bg-linear-to-r from-primary to-purple px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase">
+          Coming Soon
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderActions }) {
   const chats = chatOptions(actions);
   const [open, setOpen] = useState(false);
@@ -227,6 +245,10 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
             {chats.length > 0 && <HireMeMenu options={chats} />}
             {actions.utilityLinks.length > 0 && <UtilityMenu links={actions.utilityLinks} />}
           </div>
+          {/* Only on wide screens: next to the nav links it would crowd the header below xl. */}
+          <div className="hidden xl:block">
+            <ToolRentBadge />
+          </div>
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}
@@ -257,6 +279,9 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
                 </Link>
               </li>
             ))}
+            <li className="border-t border-line/30 py-4">
+              <ToolRentBadge />
+            </li>
             {/* The header buttons are hidden on small phones, so they are offered here instead. */}
             {chats.length > 0 && (
               <li className="flex items-center gap-2 border-t border-line/30 py-4 sm:hidden">
