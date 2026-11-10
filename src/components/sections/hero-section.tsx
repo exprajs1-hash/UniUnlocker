@@ -38,7 +38,7 @@ export async function HeroSection() {
             </Link>
           </div>
         </HeroCopy>
-        <HeroVisual />
+        <HeroVisual logo={settings.logo} />
       </div>
     </section>
   );

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { CodeXml, Cog, Wrench } from "lucide-react";
 import type { ReactNode } from "react";
+import { SafeImage } from "@/components/ui/safe-image";
 
 export function HeroCopy({ children }: { children: ReactNode }) {
   return (
@@ -21,8 +22,70 @@ const float = (distance: number, duration: number, delay = 0) => ({
   transition: { duration, delay, repeat: Infinity, ease: "easeInOut" as const },
 });
 
+/** The site logo on the phone screen: breathing glow, ripples and a light sweep. */
+function ScreenLogo({ logo }: { logo: string }) {
+  return (
+    <div className="absolute top-[14%] left-1/2 flex aspect-square w-[62%] -translate-x-1/2 items-center justify-center">
+      {/* Ripples spreading out from the logo */}
+      {[0, 1.2].map((delay) => (
+        <motion.span
+          key={delay}
+          className="absolute inset-0 rounded-full border-2 border-cyan/70"
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: [0.7, 1.35], opacity: [0.8, 0] }}
+          transition={{ duration: 2.4, delay, repeat: Infinity, ease: "easeOut" }}
+        />
+      ))}
+
+      {/* Rotating neon halo */}
+      <motion.span
+        className="absolute inset-[6%] rounded-full bg-[conic-gradient(from_0deg,#00e5ff,#087bff,#c04dff,#00e5ff)] p-[2px] opacity-90 blur-[1px]"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+      >
+        <span className="block size-full rounded-full bg-[#120833]" />
+      </motion.span>
+
+      {/* The logo itself, gently breathing */}
+      <motion.div
+        className="relative size-[80%] overflow-hidden rounded-full"
+        animate={{
+          scale: [1, 1.06, 1],
+          filter: [
+            "drop-shadow(0 0 8px rgb(0 229 255 / 0.5))",
+            "drop-shadow(0 0 22px rgb(0 229 255 / 0.95))",
+            "drop-shadow(0 0 8px rgb(0 229 255 / 0.5))",
+          ],
+        }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {logo ? (
+          <SafeImage src={logo} alt="" fill sizes="160px" priority className="object-contain" />
+        ) : (
+          <svg viewBox="0 0 48 48" className="size-full p-[12%]">
+            <defs>
+              <linearGradient id="screen-mark" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#00e5ff" />
+                <stop offset="1" stopColor="#087bff" />
+              </linearGradient>
+            </defs>
+            <path d="M7 5h11v22a6 6 0 0 0 12 0V5h11v22a17 17 0 0 1-34 0z" fill="url(#screen-mark)" />
+          </svg>
+        )}
+        {/* Light sweep across the logo */}
+        <motion.span
+          className="absolute inset-y-0 w-1/2 -skew-x-12 bg-linear-to-r from-transparent via-white/45 to-transparent"
+          initial={{ left: "-60%" }}
+          animate={{ left: ["-60%", "130%"] }}
+          transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
 /** Decorative phone scene built from CSS and SVG, so it needs no image download. */
-export function HeroVisual() {
+export function HeroVisual({ logo = "" }: { logo?: string }) {
   return (
     <div aria-hidden className="relative mx-auto h-[25rem] w-full max-w-[34rem] select-none sm:h-[31rem]">
       {/* Pedestal glow */}
@@ -52,6 +115,7 @@ export function HeroVisual() {
         <div className="relative h-full overflow-hidden rounded-[2rem] bg-[radial-gradient(ellipse_at_50%_20%,#b78cff,#5b2bc7_38%,#120833_66%,#02030a)]">
           <div className="absolute top-2 left-1/2 h-4 w-[34%] -translate-x-1/2 rounded-full bg-black" />
           <div className="absolute inset-x-[-25%] top-[48%] aspect-square rounded-full border border-white/25 bg-black/70" />
+          <ScreenLogo logo={logo} />
         </div>
       </motion.div>
 
