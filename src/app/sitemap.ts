@@ -4,12 +4,10 @@ import { SITE_URL } from "@/lib/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const projects = await getPublishedProjects();
-  const now = new Date();
   return [
-    { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${SITE_URL}/`, changeFrequency: "daily", priority: 1 },
     ...["/services", "/servers", "/tools", "/portfolio", "/partners"].map((path) => ({
       url: `${SITE_URL}${path}`,
-      lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),

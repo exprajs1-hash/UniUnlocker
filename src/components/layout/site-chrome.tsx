@@ -1,3 +1,4 @@
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Navbar } from "@/components/layout/navbar";
@@ -22,10 +23,16 @@ export async function SiteNavbar() {
   );
 }
 
+/** Cached so the footer can stay in the prerendered shell; refreshed daily. */
+async function getCurrentYear() {
+  "use cache";
+  cacheLife("days");
+  return new Date().getFullYear();
+}
+
 export async function SiteFooter() {
   const { siteName, tagline, logo, footerText, social } = await getSettings();
-  // Safe here: getSettings has already deferred this component to request time.
-  const currentYear = new Date().getFullYear();
+  const currentYear = await getCurrentYear();
   return (
     <footer className="border-t border-line/40 bg-background/80">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-5 py-9 text-sm md:flex-row lg:px-8">

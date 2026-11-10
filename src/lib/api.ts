@@ -1,8 +1,10 @@
 import "server-only";
 import { Types } from "mongoose";
+import { revalidateTag } from "next/cache";
 import { connection, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentAdmin, type CurrentAdmin } from "@/lib/auth";
+import { tagsForApiPath } from "@/lib/cache-tags";
 
 export class ApiError extends Error {
   constructor(
@@ -99,7 +101,15 @@ export function adminRoute<C = unknown>(
 ) {
   return route<C>(async (request, context) => {
     const admin = await requireAdmin(request);
-    return handler(request, context, admin);
+    const response = await handler(request, context, admin);
+    // A successful write makes the cached public data for that resource stale.
+    // expire: 0 means the next visitor waits for fresh data instead of seeing the old copy.
+    if (request.method !== "GET" && response.ok) {
+      for (const tag of tagsForApiPath(new URL(request.url).pathname)) {
+        revalidateTag(tag, { expire: 0 });
+      }
+    }
+    return response;
   });
 }
 

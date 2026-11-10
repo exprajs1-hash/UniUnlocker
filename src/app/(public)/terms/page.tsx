@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DynamicMarker } from "@/components/ui/dynamic-marker";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <article className="mx-auto max-w-3xl space-y-5 px-5 py-16 leading-relaxed text-muted lg:px-8">
-      <DynamicMarker />
       <h1 className="font-display text-4xl font-bold text-foreground">Terms of Service</h1>
       <h2 className="pt-3 font-display text-xl font-semibold text-foreground">Using this website</h2>
       <p>

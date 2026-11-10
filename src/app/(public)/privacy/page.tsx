@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DynamicMarker } from "@/components/ui/dynamic-marker";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-3xl space-y-5 px-5 py-16 leading-relaxed text-muted lg:px-8">
-      <DynamicMarker />
       <h1 className="font-display text-4xl font-bold text-foreground">Privacy Policy</h1>
       <h2 className="pt-3 font-display text-xl font-semibold text-foreground">Information you send</h2>
       <p>
