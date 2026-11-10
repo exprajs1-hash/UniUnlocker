@@ -14,7 +14,7 @@ import { firstParam, listingHref, paginate } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "All Projects",
-  description: "Our recent mobile software, unlocking and repair work.",
+  description: "UniUnlocker portfolio – our recent mobile software, unlocking and repair work.",
   alternates: { canonical: "/portfolio" },
 };
 

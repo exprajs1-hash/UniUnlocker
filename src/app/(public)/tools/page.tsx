@@ -7,7 +7,7 @@ import { paginate } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "Our Most Selling Tools",
-  description: "The tools our customers buy the most.",
+  description: "UniUnlocker best-selling tools – the unlock and repair tools our customers buy the most.",
   alternates: { canonical: "/tools" },
 };
 

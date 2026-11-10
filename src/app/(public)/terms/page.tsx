@@ -3,7 +3,8 @@ import { DynamicMarker } from "@/components/ui/dynamic-marker";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "The terms that apply to using this website and its services.",
+  description: "The terms that apply to using the UniUnlocker website and its services.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {

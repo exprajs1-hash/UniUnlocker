@@ -3,7 +3,8 @@ import { DynamicMarker } from "@/components/ui/dynamic-marker";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How this website handles the information you share through it.",
+  description: "How UniUnlocker handles the information you share through this website.",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {

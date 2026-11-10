@@ -18,6 +18,8 @@ export async function HeroSection() {
             </p>
           )}
           <h1 className="mt-5 font-display text-4xl leading-[1.12] font-bold sm:text-5xl xl:text-[3.3rem]">
+            {/* The brand name in the H1 is the strongest on-page signal for a "UniUnlocker" search. */}
+            <span className="sr-only">{settings.siteName} – </span>
             {settings.heroTitle}
             {settings.heroHighlight && (
               <span className="text-neon mt-1 block">{settings.heroHighlight}</span>

@@ -7,7 +7,7 @@ import { paginate } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "All Servers",
-  description: "Live status and prices for every server.",
+  description: "UniUnlocker servers – live status and prices for every unlock, FRP and IMEI server.",
   alternates: { canonical: "/servers" },
 };
 

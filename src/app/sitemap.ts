@@ -1,17 +1,25 @@
 import type { MetadataRoute } from "next";
 import { getPublishedProjects } from "@/lib/data";
+import { SITE_URL } from "@/lib/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const projects = await getPublishedProjects();
+  const now = new Date();
   return [
-    { url: base },
-    ...["/services", "/servers", "/portfolio", "/tools", "/partners"].map((path) => ({ url: `${base}${path}` })),
-    { url: `${base}/privacy` },
-    { url: `${base}/terms` },
-    ...projects.map((project) => ({
-      url: `${base}/portfolio/${project.slug}`,
-      lastModified: project.updatedAt,
+    { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    ...["/services", "/servers", "/tools", "/portfolio", "/partners"].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
     })),
+    ...projects.map((project) => ({
+      url: `${SITE_URL}/portfolio/${project.slug}`,
+      lastModified: project.updatedAt,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
+    { url: `${SITE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/terms`, changeFrequency: "yearly", priority: 0.2 },
   ];
 }

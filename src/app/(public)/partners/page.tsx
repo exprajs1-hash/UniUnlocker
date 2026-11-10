@@ -7,7 +7,7 @@ import { paginate } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "Our Trusted Partners",
-  description: "Brands and services we proudly work with.",
+  description: "UniUnlocker trusted partners – the brands and GSM services we proudly work with.",
   alternates: { canonical: "/partners" },
 };
 

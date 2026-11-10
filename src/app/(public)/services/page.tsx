@@ -7,7 +7,7 @@ import { paginate } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "All Services",
-  description: "Every mobile software service we offer.",
+  description: "UniUnlocker services – mobile unlocking, FRP bypass, IMEI repair and every mobile software service we offer.",
   alternates: { canonical: "/services" },
 };
 
