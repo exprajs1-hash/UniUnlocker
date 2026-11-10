@@ -26,7 +26,7 @@ export async function HeroSection() {
             )}
           </h1>
           {settings.heroSubtitle && (
-            <p className="signature-write mt-4 w-fit pr-4 font-signature text-3xl leading-tight text-foreground drop-shadow-[0_0_12px_rgb(0_229_255/0.55)] sm:text-4xl">
+            <p className="signature-write mt-4 w-fit pr-4 font-signature text-3xl leading-tight text-foreground sm:text-4xl">
               {settings.heroSubtitle}
             </p>
           )}
