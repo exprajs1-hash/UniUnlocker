@@ -292,13 +292,12 @@ dialog::backdrop {
   }
 }
 
-/* Hero highlight: a cyan → blue → purple gradient that flows through the text, with a neon glow. */
+/* Hero highlight: a cyan → blue → purple gradient that flows through the text. */
 .text-gradient-flow {
   background: linear-gradient(90deg, #00e5ff, #4aa3ff, #c04dff, #00e5ff) 0 0 / 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 14px rgb(0 229 255 / 0.55));
   animation: gradient-flow 6s linear infinite;
 }
 
