@@ -231,3 +231,71 @@ export const reorderSchema = z.object({
     .min(1)
     .max(500),
 });
+
+/* ------------------------------------------------------------------ Tool Rent */
+
+const customerPassword = z
+  .string()
+  .min(8, "Use at least 8 characters")
+  // bcrypt ignores everything after 72 bytes, so a longer password would be silently cut.
+  .refine((value) => new TextEncoder().encode(value).length <= 72, "Use at most 72 characters");
+
+export const customerRegisterSchema = z
+  .object({
+    name: text(80, "Name"),
+    email: z.string().trim().toLowerCase().max(200).pipe(z.email("Enter a valid email address")),
+    phone: z
+      .string()
+      .trim()
+      .regex(/^\+?[\d\s()-]{7,20}$/, "Enter a valid phone number, e.g. 01700000000"),
+    password: customerPassword,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    error: "Passwords do not match",
+  });
+
+export const customerLoginSchema = loginSchema;
+
+export const balanceAdjustSchema = z.object({
+  amount: z.coerce
+    .number({ error: "Enter an amount" })
+    .int("Use a whole number of taka")
+    .refine((value) => value !== 0, "The amount cannot be 0")
+    .refine((value) => Math.abs(value) <= 10_000_000, "This amount is too large"),
+  note: optionalText(200),
+});
+
+export const customerPatchSchema = z.object({ active: z.boolean() });
+
+/** Every key is optional with no defaults, so a PATCH only touches what it sends. */
+export const rentServicePatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  title: z.string().trim().max(200, "This value is too long").optional(),
+  priceBdt: z
+    .preprocess(
+      (value) => (typeof value === "string" ? (value.trim() === "" ? null : Number(value.trim())) : value),
+      z
+        .number({ error: "Enter a number, or leave it blank" })
+        .int("Use a whole number of taka")
+        .min(0, "Price cannot be negative")
+        .max(10_000_000, "This price is too large")
+        .nullable(),
+    )
+    .optional(),
+  displayOrder: z.coerce.number().int().min(0).max(100000).optional(),
+});
+
+export const rentConfigSchema = z.object({
+  markupPercent: z.coerce
+    .number({ error: "Enter a percentage, e.g. 20" })
+    .min(0, "Markup cannot be negative")
+    .max(1000, "This markup is too large"),
+  ordersEnabled: z.boolean(),
+});
+
+export const rentOrderSchema = z.object({
+  serviceId: z.string().regex(/^[a-f\d]{24}$/i, "Choose a service"),
+  fields: z.record(z.string(), z.string().max(1000)).default({}),
+});

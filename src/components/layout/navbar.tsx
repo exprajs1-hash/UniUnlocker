@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Menu, Send, Wrench, X } from "lucide-react";
+import { ChevronDown, Menu, Send, UserRound, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -165,21 +165,41 @@ function UtilityMenu({ links }: { links: UtilityLink[] }) {
   );
 }
 
-/** Teaser for the upcoming Tool Rent feature. Not a link, since there is nowhere to go yet. */
-function ToolRentBadge() {
+/** Link to the Tool Rent page, styled to stand out from the plain nav links. */
+function ToolRentBadge({ onClick }: { onClick?: () => void }) {
   return (
-    <span className="relative inline-flex items-center gap-2 rounded-full bg-linear-to-r from-cyan via-primary to-purple p-px shadow-[0_0_18px_rgb(121_44_255/0.45)]">
+    <Link
+      href="/rent"
+      onClick={onClick}
+      className="relative inline-flex items-center gap-2 rounded-full bg-linear-to-r from-cyan via-primary to-purple p-px shadow-[0_0_18px_rgb(121_44_255/0.45)] transition hover:shadow-[0_0_26px_rgb(0_229_255/0.6)]"
+    >
       <span className="inline-flex items-center gap-2 rounded-full bg-background px-3.5 py-2 text-sm font-semibold whitespace-nowrap">
         <span aria-hidden className="relative flex size-2">
           <span className="absolute inline-flex size-full rounded-full bg-cyan opacity-75 motion-safe:animate-ping" />
           <span className="relative inline-flex size-2 rounded-full bg-cyan" />
         </span>
         Tools Rent
-        <span className="rounded-full bg-linear-to-r from-primary to-purple px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase">
-          Coming Soon
-        </span>
       </span>
-    </span>
+    </Link>
+  );
+}
+
+function AccountLink({ onClick, withLabel }: { onClick?: () => void; withLabel?: boolean }) {
+  return (
+    <Link
+      href="/account"
+      onClick={onClick}
+      aria-label={withLabel ? undefined : "My account"}
+      title="My account"
+      className={
+        withLabel
+          ? "flex items-center gap-2 py-3 font-medium hover:text-cyan"
+          : "flex size-10 items-center justify-center rounded-full border border-line/60 transition hover:border-cyan hover:text-cyan"
+      }
+    >
+      <UserRound aria-hidden className="size-5" />
+      {withLabel && "My account"}
+    </Link>
   );
 }
 
@@ -238,6 +258,12 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
               </Link>
             </li>
           ))}
+          {/* The Tools Rent badge only fits from xl; below that it is a plain link. */}
+          <li className="xl:hidden">
+            <Link href="/rent" aria-current={pathname === "/rent" ? "page" : undefined} className={linkClass("rent")}>
+              Rent
+            </Link>
+          </li>
         </ul>
 
         <div className="flex items-center gap-2">
@@ -248,6 +274,9 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
           {/* Only on wide screens: next to the nav links it would crowd the header below xl. */}
           <div className="hidden xl:block">
             <ToolRentBadge />
+          </div>
+          <div className="hidden sm:block">
+            <AccountLink />
           </div>
           <button
             type="button"
@@ -280,7 +309,10 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
               </li>
             ))}
             <li className="border-t border-line/30 py-4">
-              <ToolRentBadge />
+              <ToolRentBadge onClick={() => setOpen(false)} />
+            </li>
+            <li className="border-t border-line/30">
+              <AccountLink withLabel onClick={() => setOpen(false)} />
             </li>
             {/* The header buttons are hidden on small phones, so they are offered here instead. */}
             {chats.length > 0 && (

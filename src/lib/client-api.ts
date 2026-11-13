@@ -29,7 +29,12 @@ export async function apiFetch<T>(url: string, options: { method?: string; body?
   };
 
   if (!response.ok) {
-    if (response.status === 401 && !url.startsWith("/api/auth/")) {
+    if (response.status === 401 && url.startsWith("/api/me")) {
+      // A signed-out customer goes to the customer sign-in page, then back here.
+      const next = encodeURIComponent(window.location.pathname);
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = `/login?next=${next}`;
+    } else if (response.status === 401 && !url.startsWith("/api/auth/") && !url.startsWith("/api/customer-auth/")) {
       // This runs outside React, and the hard reload also drops cached admin pages.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/admin/login";

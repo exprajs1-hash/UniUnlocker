@@ -142,3 +142,98 @@ export interface PexelsPhoto {
   photographer: string;
   photographerUrl: string;
 }
+
+/* ------------------------------------------------------------------ Tool Rent */
+
+/**
+ * submitting: balance taken, provider call in flight (or its outcome unknown).
+ * pending / processing: accepted by the provider. completed: result delivered.
+ * rejected: the provider refused it. failed: never reached the provider.
+ * Rejected and failed orders are refunded.
+ */
+export const RENT_ORDER_STATUSES = ["submitting", "pending", "processing", "completed", "rejected", "failed"] as const;
+export type RentOrderStatus = (typeof RENT_ORDER_STATUSES)[number];
+
+export const BALANCE_TRANSACTION_TYPES = ["admin_credit", "admin_debit", "order", "refund"] as const;
+export type BalanceTransactionType = (typeof BALANCE_TRANSACTION_TYPES)[number];
+
+export interface RentCustomFieldDTO {
+  name: string;
+  type: string;
+  options: string[];
+  required: boolean;
+}
+
+/** What visitors see: the selling price only, never the provider cost. */
+export interface PublicRentServiceDTO {
+  id: string;
+  name: string;
+  group: string;
+  deliveryTime: string;
+  info: string;
+  priceBdt: number;
+  customFields: RentCustomFieldDTO[];
+}
+
+export interface AdminRentServiceDTO {
+  id: string;
+  serviceId: number;
+  name: string;
+  title: string;
+  group: string;
+  type: string;
+  costUsd: number;
+  priceBdt: number | null;
+  /** The price customers pay now, fixed or calculated. */
+  effectivePriceBdt: number;
+  deliveryTime: string;
+  info: string;
+  customFields: RentCustomFieldDTO[];
+  enabled: boolean;
+  availableOnProvider: boolean;
+  displayOrder: number;
+  syncedAt: string;
+}
+
+export interface RentConfigDTO {
+  markupPercent: number;
+  ordersEnabled: boolean;
+}
+
+export interface CustomerDTO {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  balance: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface RentOrderDTO {
+  id: string;
+  serviceName: string;
+  priceBdt: number;
+  fields: Record<string, string>;
+  status: RentOrderStatus;
+  result: string;
+  refunded: boolean;
+  createdAt: string;
+}
+
+export interface AdminRentOrderDTO extends RentOrderDTO {
+  serviceId: number;
+  costUsd: number;
+  providerOrderId: string;
+  adminNote: string;
+  customer: { id: string; name: string; email: string } | null;
+}
+
+export interface BalanceTransactionDTO {
+  id: string;
+  type: BalanceTransactionType;
+  amount: number;
+  balanceAfter: number;
+  note: string;
+  createdAt: string;
+}
