@@ -265,7 +265,15 @@ export function RentCatalog() {
               <div className="mt-4 flex items-center justify-between gap-3">
                 <span className="text-2xl font-bold text-neon">{formatBdt(service.priceBdt)}</span>
                 <button type="button" onClick={() => setOrdering(service)} className="btn-neon min-h-10! px-4! text-sm">
-                  <ShoppingCart aria-hidden className="size-4" /> Rent now
+                  {me ? (
+                    <>
+                      <ShoppingCart aria-hidden className="size-4" /> Rent now
+                    </>
+                  ) : (
+                    <>
+                      <LogIn aria-hidden className="size-4" /> Sign in to rent
+                    </>
+                  )}
                 </button>
               </div>
             </li>
