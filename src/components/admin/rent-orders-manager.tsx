@@ -89,7 +89,7 @@ export function RentOrdersManager() {
                         <RelativeTime iso={order.createdAt} />
                       </p>
                       <p className="text-xs text-admin-muted">
-                        Charged {formatBdt(order.priceBdt)} · cost ${order.costUsd} · service #{order.serviceId}
+                        Charged {formatBdt(order.priceBdt)} · cost ${order.costUsd} · {order.providerName} service #{order.serviceId}
                         {order.providerOrderId && ` · provider order #${order.providerOrderId}`}
                       </p>
                     </div>

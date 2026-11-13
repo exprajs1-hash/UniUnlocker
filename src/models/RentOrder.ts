@@ -3,6 +3,8 @@ import { RENT_ORDER_STATUSES, type RentOrderStatus } from "@/types";
 
 export interface IRentOrder {
   customer: Types.ObjectId;
+  /** The provider the order was placed with, used for status checks. */
+  provider: Types.ObjectId;
   /** Snapshot at order time, so later price or name edits do not change history. */
   serviceId: number;
   serviceName: string;
@@ -22,6 +24,7 @@ export interface IRentOrder {
 const RentOrderSchema = new Schema<IRentOrder>(
   {
     customer: { type: Schema.Types.ObjectId, ref: "Customer", required: true, index: true },
+    provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true },
     serviceId: { type: Number, required: true },
     serviceName: { type: String, required: true },
     priceBdt: { type: Number, required: true },

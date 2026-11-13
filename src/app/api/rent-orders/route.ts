@@ -1,6 +1,6 @@
 import { adminRoute, json } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
-import { refreshOpenOrders, toOrderDTO } from "@/lib/rent";
+import { providerNameMap, refreshOpenOrders, toOrderDTO } from "@/lib/rent";
 import { RentOrder } from "@/models/RentOrder";
 import { RENT_ORDER_STATUSES, type AdminRentOrderDTO, type RentOrderStatus } from "@/types";
 
@@ -15,7 +15,7 @@ export const GET = adminRoute(async (request) => {
 
   await connectToDatabase();
   await refreshOpenOrders({}, 10);
-  const [orders, total] = await Promise.all([
+  const [orders, total, names] = await Promise.all([
     RentOrder.find(filter)
       .sort({ createdAt: -1 })
       .skip((page - 1) * PAGE_SIZE)
@@ -23,11 +23,13 @@ export const GET = adminRoute(async (request) => {
       .populate<{ customer: { _id: unknown; name: string; email: string } | null }>("customer", "name email")
       .lean(),
     RentOrder.countDocuments(filter),
+    providerNameMap(),
   ]);
 
   const dto: AdminRentOrderDTO[] = orders.map(({ customer, ...order }) => ({
     ...toOrderDTO(order),
     serviceId: order.serviceId,
+    providerName: names.get(String(order.provider)) ?? "Deleted provider",
     costUsd: order.costUsd,
     providerOrderId: order.providerOrderId,
     adminNote: order.adminNote,

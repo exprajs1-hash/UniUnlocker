@@ -1,7 +1,4 @@
 import "server-only";
-import { connectToDatabase } from "@/lib/mongodb";
-import { decryptSecret } from "@/lib/secret-box";
-import { RentConfig } from "@/models/RentConfig";
 
 /**
  * Client for the GSM-THEME reseller API, which follows the DHRU Fusion format:
@@ -26,53 +23,6 @@ export interface ProviderCredentials {
   key: string;
 }
 
-export interface ProviderSettings {
-  url: string;
-  username: string;
-  /** Last 4 characters only, for display. */
-  keyHint: string;
-  hasKey: boolean;
-  /** "admin" when saved from the admin panel, "env" when read from GSM_API_* variables. */
-  source: "admin" | "env" | "none";
-}
-
-/** Values saved in the admin panel win; each blank one falls back to its env variable. */
-async function loadCredentials(): Promise<{ credentials: ProviderCredentials; source: ProviderSettings["source"] }> {
-  await connectToDatabase();
-  const saved = await RentConfig.findOne({ key: "singleton" }).select("+apiKeyEncrypted").lean();
-  let savedKey = "";
-  if (saved?.apiKeyEncrypted) {
-    savedKey = decryptSecret(saved.apiKeyEncrypted) ?? "";
-    if (!savedKey) console.error("[rent] Saved provider API key could not be decrypted; re-enter it in the admin panel.");
-  }
-  const credentials = {
-    url: saved?.apiUrl || process.env.GSM_API_URL || "",
-    username: saved?.apiUsername || process.env.GSM_API_USERNAME || "",
-    key: savedKey || process.env.GSM_API_KEY || "",
-  };
-  const source = saved?.apiUrl || saved?.apiUsername || savedKey ? "admin" : credentials.url ? "env" : "none";
-  return { credentials, source };
-}
-
-export async function getProviderSettings(): Promise<ProviderSettings> {
-  const { credentials, source } = await loadCredentials();
-  return {
-    url: credentials.url,
-    username: credentials.username,
-    keyHint: credentials.key ? `••••${credentials.key.slice(-4)}` : "",
-    hasKey: Boolean(credentials.key),
-    source,
-  };
-}
-
-async function config(override?: ProviderCredentials): Promise<ProviderCredentials> {
-  const credentials = override ?? (await loadCredentials()).credentials;
-  if (!credentials.url || !credentials.username || !credentials.key) {
-    throw new ProviderUnavailableError("The rent provider is not set up. Add the API URL, username and key in Rent services.");
-  }
-  return credentials;
-}
-
 function escapeXml(value: string): string {
   return value.replace(/[<>&'"]/g, (char) => `&#${char.charCodeAt(0)};`);
 }
@@ -90,8 +40,13 @@ function errorText(message: unknown): string {
   return "The provider rejected the request.";
 }
 
-async function call(action: string, parameters?: string, override?: ProviderCredentials): Promise<Record<string, unknown>> {
-  const { url, username, key } = await config(override);
+async function call(
+  credentials: ProviderCredentials,
+  action: string,
+  parameters?: string,
+): Promise<Record<string, unknown>> {
+  const { url, username, key } = credentials;
+  if (!url || !username || !key) throw new ProviderUnavailableError("This provider is missing its API URL, username or key.");
   const body = new URLSearchParams({ username, apiaccesskey: key, action, requestformat: "JSON" });
   if (parameters) body.set("parameters", parameters);
 
@@ -119,9 +74,8 @@ export interface ProviderAccount {
   currency: string;
 }
 
-/** With `override`, tests credentials that have not been saved yet. */
-export async function getProviderAccount(override?: ProviderCredentials): Promise<ProviderAccount> {
-  const result = await call("accountinfo", undefined, override);
+export async function getProviderAccount(credentials: ProviderCredentials): Promise<ProviderAccount> {
+  const result = await call(credentials, "accountinfo");
   const info = (result.AccountInfo ?? {}) as { creditraw?: unknown; currency?: unknown };
   return { credit: Number(info.creditraw) || 0, currency: String(info.currency ?? "USD") };
 }
@@ -154,8 +108,8 @@ interface RawService {
   "Requires.Custom"?: { fieldname?: string; fieldtype?: string; fieldoptions?: string; required?: string }[];
 }
 
-export async function listProviderServices(): Promise<ProviderService[]> {
-  const result = await call("imeiservicelist");
+export async function listProviderServices(credentials: ProviderCredentials): Promise<ProviderService[]> {
+  const result = await call(credentials, "imeiservicelist");
   const groups = (result.LIST ?? {}) as Record<string, { GROUPNAME?: string; SERVICES?: Record<string, RawService> }>;
   const services: ProviderService[] = [];
   for (const [groupKey, group] of Object.entries(groups)) {
@@ -188,7 +142,11 @@ export async function listProviderServices(): Promise<ProviderService[]> {
 }
 
 /** Places an order and returns the provider's reference id. */
-export async function placeProviderOrder(serviceId: number, fields: Record<string, string>): Promise<string> {
+export async function placeProviderOrder(
+  credentials: ProviderCredentials,
+  serviceId: number,
+  fields: Record<string, string>,
+): Promise<string> {
   let parameters = `<PARAMETERS><ID>${serviceId}</ID><QNT>1</QNT>`;
   if (Object.keys(fields).length > 0) {
     const encoded = Buffer.from(JSON.stringify(fields), "utf8").toString("base64");
@@ -196,7 +154,7 @@ export async function placeProviderOrder(serviceId: number, fields: Record<strin
   }
   parameters += "</PARAMETERS>";
 
-  const result = await call("placeimeiorder", parameters);
+  const result = await call(credentials, "placeimeiorder", parameters);
   const reference = result.REFERENCEID ?? result.ID;
   if (reference === undefined || reference === null || reference === "") {
     // Accepted but without an id: we cannot track it, so treat the outcome as unknown.
@@ -230,8 +188,8 @@ export function providerTextToPlain(value: unknown): string {
 }
 
 /** DHRU status codes: 0 new, 1 in process, 3 rejected, 4 completed. */
-export async function getProviderOrder(referenceId: string): Promise<ProviderOrderStatus> {
-  const result = await call("getimeiorder", `<PARAMETERS><ID>${escapeXml(referenceId)}</ID></PARAMETERS>`);
+export async function getProviderOrder(credentials: ProviderCredentials, referenceId: string): Promise<ProviderOrderStatus> {
+  const result = await call(credentials, "getimeiorder", `<PARAMETERS><ID>${escapeXml(referenceId)}</ID></PARAMETERS>`);
   const status = String(result.STATUS ?? "");
   const code = providerTextToPlain(result.CODE);
   switch (status) {

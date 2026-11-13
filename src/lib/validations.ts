@@ -300,7 +300,8 @@ export const rentOrderSchema = z.object({
   fields: z.record(z.string(), z.string().max(1000)).default({}),
 });
 
-export const providerSettingsSchema = z.object({
+export const providerSchema = z.object({
+  name: text(80, "Name"),
   url: z
     .string()
     .trim()
@@ -313,6 +314,8 @@ export const providerSettingsSchema = z.object({
       }
     }, "Enter the full API URL, e.g. https://example.com/public/api/index.php"),
   username: text(200, "Username"),
-  /** Blank keeps the saved key. */
+  /** Required when adding; blank when editing keeps the saved key. */
   key: z.string().trim().max(500, "This key is too long").default(""),
 });
+
+export const providerPatchSchema = z.object({ enabled: z.boolean() });

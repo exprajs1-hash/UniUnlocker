@@ -1,4 +1,4 @@
-import { Schema, model, models, type Model } from "mongoose";
+import { Schema, Types, model, models, type Model } from "mongoose";
 
 export interface IRentCustomField {
   name: string;
@@ -9,6 +9,9 @@ export interface IRentCustomField {
 
 /** A provider service, copied in by "Sync from provider". Hidden until the admin enables it. */
 export interface IRentService {
+  /** Which provider sells this service. */
+  provider: Types.ObjectId;
+  /** The provider's own service id; unique only within one provider. */
   serviceId: number;
   /** Name from the provider; `title` overrides it on the website when set. */
   name: string;
@@ -31,7 +34,8 @@ export interface IRentService {
 
 const RentServiceSchema = new Schema<IRentService>(
   {
-    serviceId: { type: Number, required: true, unique: true },
+    provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true },
+    serviceId: { type: Number, required: true },
     name: { type: String, required: true, trim: true },
     title: { type: String, default: "", trim: true },
     group: { type: String, default: "", trim: true },
@@ -58,6 +62,7 @@ const RentServiceSchema = new Schema<IRentService>(
   { timestamps: true },
 );
 
+RentServiceSchema.index({ provider: 1, serviceId: 1 }, { unique: true });
 RentServiceSchema.index({ enabled: 1, displayOrder: 1 });
 
 export const RentService: Model<IRentService> =

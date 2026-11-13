@@ -1,9 +1,10 @@
 "use client";
 
-import { KeyRound, Pencil, RefreshCw, Search } from "lucide-react";
+import { Pencil, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextField, Toggle } from "@/components/admin/form";
+import { ProvidersPanel } from "@/components/admin/providers-panel";
 import { formatBdt } from "@/components/rent/shared";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
@@ -16,126 +17,6 @@ type Show = "enabled" | "rent" | "all";
 
 const PAGE = 60;
 const isRent = (service: AdminRentServiceDTO) => /\brent\b/i.test(service.name) || service.type === "REMOTE";
-
-type ProviderInfo = {
-  settings: { url: string; username: string; keyHint: string; hasKey: boolean; source: "admin" | "env" | "none" };
-  account: { credit: number; currency: string } | null;
-  accountError: string | null;
-};
-
-function ProviderConnectionForm({
-  settings,
-  onSaved,
-  onCancel,
-}: {
-  settings: ProviderInfo["settings"];
-  onSaved: (info: ProviderInfo) => void;
-  onCancel: () => void;
-}) {
-  const [url, setUrl] = useState(settings.url);
-  const [username, setUsername] = useState(settings.username);
-  const [key, setKey] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
-  const toast = useToast();
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setErrors({});
-    try {
-      const info = await apiFetch<ProviderInfo>("/api/rent-provider", { method: "PUT", body: { url, username, key } });
-      toast.success("Connected and saved.");
-      onSaved(info);
-    } catch (error) {
-      setErrors(fieldErrorsOf(error));
-      toast.error(errorMessage(error));
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} noValidate className="space-y-4">
-      <TextField
-        label="API URL"
-        type="url"
-        placeholder="https://example.com/public/api/index.php"
-        value={url}
-        onChange={setUrl}
-        error={errors.url}
-        required
-      />
-      <TextField label="Username" value={username} onChange={setUsername} error={errors.username} autoComplete="off" required />
-      <TextField
-        label="API key"
-        type="password"
-        autoComplete="new-password"
-        placeholder={settings.hasKey ? `Saved (${settings.keyHint})` : "Paste the API key"}
-        hint={settings.hasKey ? "Leave blank to keep the current key." : undefined}
-        value={key}
-        onChange={setKey}
-        error={errors.key}
-      />
-      <p className="text-xs text-admin-muted">The details are tested with the provider before they are saved.</p>
-      <div className="flex justify-end gap-2 pt-1">
-        <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">
-          Cancel
-        </button>
-        <button type="submit" disabled={busy} className="admin-btn admin-btn-primary">
-          {busy ? "Testing…" : "Test & save"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function ProviderCard() {
-  const { data, error, reload, setData } = useResource<ProviderInfo>("/api/rent-provider");
-  const [editing, setEditing] = useState(false);
-
-  const balance = data?.account
-    ? `${data.account.credit.toFixed(2)} ${data.account.currency}`
-    : data?.accountError ?? error ?? "Checking…";
-
-  return (
-    <div className="admin-card space-y-3 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-admin-muted">Provider balance</p>
-          <p className={`mt-1 font-semibold ${data?.account ? "text-xl" : "text-sm text-status-offline"}`}>{balance}</p>
-        </div>
-        <button type="button" onClick={reload} aria-label="Check again" className="admin-icon-btn">
-          <RefreshCw aria-hidden className="size-4" />
-        </button>
-      </div>
-      {data && (
-        <div className="space-y-0.5 border-t border-admin-line pt-3 text-xs text-admin-muted">
-          <p className="truncate">API: {data.settings.url || "not set"}</p>
-          <p className="truncate">
-            User: {data.settings.username || "not set"} · Key: {data.settings.keyHint || "not set"}
-          </p>
-          {data.settings.source === "env" && <p>Using values from the server .env file.</p>}
-        </div>
-      )}
-      <button type="button" onClick={() => setEditing(true)} disabled={!data} className="admin-btn admin-btn-secondary w-full">
-        <KeyRound aria-hidden className="size-4" /> Change API connection
-      </button>
-
-      <Modal open={editing} onClose={() => setEditing(false)} title="Provider API connection">
-        {editing && data && (
-          <ProviderConnectionForm
-            settings={data.settings}
-            onCancel={() => setEditing(false)}
-            onSaved={(info) => {
-              setData(() => info);
-              setEditing(false);
-            }}
-          />
-        )}
-      </Modal>
-    </div>
-  );
-}
 
 function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: number; onSaved: () => void }) {
   const [markup, setMarkup] = useState(String(config.markupPercent));
@@ -226,7 +107,7 @@ function ServiceForm({
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       <p className="text-sm text-admin-muted">
-        Provider: <span className="text-admin-text">{service.name}</span> · cost ${service.costUsd} · #{service.serviceId}
+        {service.providerName}: <span className="text-admin-text">{service.name}</span> · cost ${service.costUsd} · #{service.serviceId}
       </p>
       <TextField
         label="Name on website"
@@ -258,9 +139,9 @@ function ServiceForm({
 
 export function RentServicesManager() {
   const { data, error, loading, reload, setData } = useResource<Data>("/api/rent-services");
-  const [syncing, setSyncing] = useState(false);
   const [show, setShow] = useState<Show>("rent");
   const [query, setQuery] = useState("");
+  const [providerFilter, setProviderFilter] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const [editing, setEditing] = useState<AdminRentServiceDTO | null>(null);
   const toast = useToast();
@@ -269,30 +150,21 @@ export function RentServicesManager() {
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (services ?? []).filter((service) => {
+      if (providerFilter && service.provider !== providerFilter) return false;
       if (show === "enabled" && !service.enabled) return false;
       if (show === "rent" && !service.enabled && !isRent(service)) return false;
       if (!needle) return true;
-      return `${service.name} ${service.title} ${service.group} ${service.serviceId}`.toLowerCase().includes(needle);
+      return `${service.name} ${service.title} ${service.group} ${service.serviceId} ${service.providerName}`.toLowerCase().includes(needle);
     });
-  }, [services, show, query]);
+  }, [services, show, query, providerFilter]);
+
+  const providerOptions = useMemo(
+    () => [...new Map((services ?? []).map((service) => [service.provider, service.providerName])).entries()],
+    [services],
+  );
 
   const replace = (updated: AdminRentServiceDTO) =>
     setData((current) => current && { ...current, services: current.services.map((s) => (s.id === updated.id ? updated : s)) });
-
-  async function sync() {
-    setSyncing(true);
-    try {
-      const result = await apiFetch<{ total: number; added: number; unavailable: number }>("/api/rent-services/sync", {
-        method: "POST",
-      });
-      toast.success(`Synced ${result.total} services (${result.added} new, ${result.unavailable} no longer offered).`);
-      reload();
-    } catch (syncError) {
-      toast.error(errorMessage(syncError));
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   async function toggle(service: AdminRentServiceDTO, enabled: boolean) {
     replace({ ...service, enabled });
@@ -314,13 +186,7 @@ export function RentServicesManager() {
     <>
       <PageHeader
         title="Rent services"
-        description="Pick which provider services customers can rent, and at what price."
-        action={
-          <button type="button" onClick={() => void sync()} disabled={syncing} className="admin-btn admin-btn-primary">
-            <RefreshCw aria-hidden className={`size-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing…" : "Sync from provider"}
-          </button>
-        }
+        description="Add your providers, sync their services, then pick which ones customers can rent and at what price."
       />
 
       {loading ? (
@@ -329,15 +195,15 @@ export function RentServicesManager() {
         <LoadError message={error} onRetry={reload} />
       ) : data ? (
         <>
-          <div className="mb-6 grid gap-4 md:grid-cols-2">
-            <ProviderCard />
+          <div className="mb-6 space-y-4">
+            <ProvidersPanel onServicesChanged={reload} />
             <PricingCard key={JSON.stringify(data.config)} config={data.config} rate={data.rate} onSaved={reload} />
           </div>
 
           {data.services.length === 0 ? (
             <AdminEmpty
               title="No services yet"
-              message="Press “Sync from provider” to load the provider's service list. New services start hidden."
+              message="Add a provider above and press its Sync button to load its services. New services start hidden."
             />
           ) : (
             <>
@@ -356,6 +222,26 @@ export function RentServicesManager() {
                     className="admin-input pl-9!"
                   />
                 </label>
+                {providerOptions.length > 1 && (
+                  <label className="sm:w-52">
+                    <span className="sr-only">Provider</span>
+                    <select
+                      value={providerFilter}
+                      onChange={(event) => {
+                        setProviderFilter(event.target.value);
+                        setLimit(PAGE);
+                      }}
+                      className="admin-input"
+                    >
+                      <option value="">All providers</option>
+                      {providerOptions.map(([id, name]) => (
+                        <option key={id} value={id}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="sm:w-60">
                   <span className="sr-only">Show</span>
                   <select
@@ -394,7 +280,7 @@ export function RentServicesManager() {
                           )}
                         </p>
                         <p className="text-xs text-admin-muted">
-                          #{service.serviceId} · {service.group} · {service.type}
+                          {service.providerName} · #{service.serviceId} · {service.group} · {service.type}
                           {service.customFields.length > 0 && ` · asks for ${service.customFields.map((f) => f.name).join(", ")}`}
                         </p>
                       </div>

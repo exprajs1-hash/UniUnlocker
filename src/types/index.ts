@@ -175,8 +175,23 @@ export interface PublicRentServiceDTO {
   customFields: RentCustomFieldDTO[];
 }
 
+export interface ProviderDTO {
+  id: string;
+  name: string;
+  url: string;
+  username: string;
+  /** Last 4 characters of the API key only. */
+  keyHint: string;
+  enabled: boolean;
+  displayOrder: number;
+  serviceCount: number;
+  enabledServiceCount: number;
+}
+
 export interface AdminRentServiceDTO {
   id: string;
+  provider: string;
+  providerName: string;
   serviceId: number;
   name: string;
   title: string;
@@ -223,6 +238,7 @@ export interface RentOrderDTO {
 
 export interface AdminRentOrderDTO extends RentOrderDTO {
   serviceId: number;
+  providerName: string;
   costUsd: number;
   providerOrderId: string;
   adminNote: string;

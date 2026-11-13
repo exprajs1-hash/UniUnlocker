@@ -8,10 +8,12 @@ import {
   ProviderUnavailableError,
 } from "@/lib/gsm-api";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getProviderCredentials } from "@/lib/providers";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
 import { serialize } from "@/lib/serialize";
 import { BalanceTransaction } from "@/models/BalanceTransaction";
 import { Customer } from "@/models/Customer";
+import { Provider } from "@/models/Provider";
 import { RentConfig } from "@/models/RentConfig";
 import { RentOrder, type IRentOrder } from "@/models/RentOrder";
 import { RentService, type IRentService } from "@/models/RentService";
@@ -70,8 +72,19 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentSe
   };
 }
 
-export function toAdminService(doc: ServiceDoc, pricing: Pricing): AdminRentServiceDTO {
-  return { ...serialize<AdminRentServiceDTO>(doc), effectivePriceBdt: effectivePrice(doc, pricing) };
+export function toAdminService(doc: ServiceDoc, pricing: Pricing, providerNames: Map<string, string>): AdminRentServiceDTO {
+  return {
+    ...serialize<AdminRentServiceDTO>(doc),
+    provider: String(doc.provider),
+    providerName: providerNames.get(String(doc.provider)) ?? "Deleted provider",
+    effectivePriceBdt: effectivePrice(doc, pricing),
+  };
+}
+
+/** Provider id → name, for labelling services and orders in the admin panel. */
+export async function providerNameMap(): Promise<Map<string, string>> {
+  const providers = await Provider.find({}, { name: 1 }).lean();
+  return new Map(providers.map((provider) => [String(provider._id), provider.name]));
 }
 
 /* ------------------------------------------------------------------- wallet */
@@ -182,6 +195,10 @@ export async function placeOrder(
   if (!Types.ObjectId.isValid(serviceId)) throw new ApiError(404, "This service is not available.");
   const service = await RentService.findOne({ _id: serviceId, enabled: true, availableOnProvider: true }).lean();
   if (!service) throw new ApiError(404, "This service is not available.");
+  // Checked before any money moves: a disabled or deleted provider cannot take orders.
+  const credentials = await getProviderCredentials(service.provider, true).catch(() => {
+    throw new ApiError(404, "This service is not available.");
+  });
 
   const fields = cleanFields(service, input);
   const price = effectivePrice(service, pricing);
@@ -205,6 +222,7 @@ export async function placeOrder(
   const order = await RentOrder.create({
     _id: orderId,
     customer: customerId,
+    provider: service.provider,
     serviceId: service.serviceId,
     serviceName,
     priceBdt: price,
@@ -214,7 +232,7 @@ export async function placeOrder(
   });
 
   try {
-    const reference = await placeProviderOrder(service.serviceId, fields);
+    const reference = await placeProviderOrder(credentials, service.serviceId, fields);
     order.providerOrderId = reference;
     order.status = "pending";
     await order.save();
@@ -249,7 +267,8 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
   await RentOrder.updateOne({ _id: id }, { $set: { lastCheckedAt: new Date() } });
   let status;
   try {
-    status = await getProviderOrder(order.providerOrderId);
+    const credentials = await getProviderCredentials(order.provider);
+    status = await getProviderOrder(credentials, order.providerOrderId);
   } catch (error) {
     console.error("[rent] Status check failed", id, (error as Error).message);
     return;
