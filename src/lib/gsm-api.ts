@@ -1,4 +1,7 @@
 import "server-only";
+import { connectToDatabase } from "@/lib/mongodb";
+import { decryptSecret } from "@/lib/secret-box";
+import { RentConfig } from "@/models/RentConfig";
 
 /**
  * Client for the GSM-THEME reseller API, which follows the DHRU Fusion format:
@@ -17,14 +20,57 @@ export class ProviderRejectedError extends Error {}
  */
 export class ProviderUnavailableError extends Error {}
 
-function config() {
-  const url = process.env.GSM_API_URL;
-  const username = process.env.GSM_API_USERNAME;
-  const key = process.env.GSM_API_KEY;
-  if (!url || !username || !key) {
-    throw new ProviderUnavailableError("The rent provider is not configured (GSM_API_URL, GSM_API_USERNAME, GSM_API_KEY).");
+export interface ProviderCredentials {
+  url: string;
+  username: string;
+  key: string;
+}
+
+export interface ProviderSettings {
+  url: string;
+  username: string;
+  /** Last 4 characters only, for display. */
+  keyHint: string;
+  hasKey: boolean;
+  /** "admin" when saved from the admin panel, "env" when read from GSM_API_* variables. */
+  source: "admin" | "env" | "none";
+}
+
+/** Values saved in the admin panel win; each blank one falls back to its env variable. */
+async function loadCredentials(): Promise<{ credentials: ProviderCredentials; source: ProviderSettings["source"] }> {
+  await connectToDatabase();
+  const saved = await RentConfig.findOne({ key: "singleton" }).select("+apiKeyEncrypted").lean();
+  let savedKey = "";
+  if (saved?.apiKeyEncrypted) {
+    savedKey = decryptSecret(saved.apiKeyEncrypted) ?? "";
+    if (!savedKey) console.error("[rent] Saved provider API key could not be decrypted; re-enter it in the admin panel.");
   }
-  return { url, username, key };
+  const credentials = {
+    url: saved?.apiUrl || process.env.GSM_API_URL || "",
+    username: saved?.apiUsername || process.env.GSM_API_USERNAME || "",
+    key: savedKey || process.env.GSM_API_KEY || "",
+  };
+  const source = saved?.apiUrl || saved?.apiUsername || savedKey ? "admin" : credentials.url ? "env" : "none";
+  return { credentials, source };
+}
+
+export async function getProviderSettings(): Promise<ProviderSettings> {
+  const { credentials, source } = await loadCredentials();
+  return {
+    url: credentials.url,
+    username: credentials.username,
+    keyHint: credentials.key ? `••••${credentials.key.slice(-4)}` : "",
+    hasKey: Boolean(credentials.key),
+    source,
+  };
+}
+
+async function config(override?: ProviderCredentials): Promise<ProviderCredentials> {
+  const credentials = override ?? (await loadCredentials()).credentials;
+  if (!credentials.url || !credentials.username || !credentials.key) {
+    throw new ProviderUnavailableError("The rent provider is not set up. Add the API URL, username and key in Rent services.");
+  }
+  return credentials;
 }
 
 function escapeXml(value: string): string {
@@ -44,8 +90,8 @@ function errorText(message: unknown): string {
   return "The provider rejected the request.";
 }
 
-async function call(action: string, parameters?: string): Promise<Record<string, unknown>> {
-  const { url, username, key } = config();
+async function call(action: string, parameters?: string, override?: ProviderCredentials): Promise<Record<string, unknown>> {
+  const { url, username, key } = await config(override);
   const body = new URLSearchParams({ username, apiaccesskey: key, action, requestformat: "JSON" });
   if (parameters) body.set("parameters", parameters);
 
@@ -73,8 +119,9 @@ export interface ProviderAccount {
   currency: string;
 }
 
-export async function getProviderAccount(): Promise<ProviderAccount> {
-  const result = await call("accountinfo");
+/** With `override`, tests credentials that have not been saved yet. */
+export async function getProviderAccount(override?: ProviderCredentials): Promise<ProviderAccount> {
+  const result = await call("accountinfo", undefined, override);
   const info = (result.AccountInfo ?? {}) as { creditraw?: unknown; currency?: unknown };
   return { credit: Number(info.creditraw) || 0, currency: String(info.currency ?? "USD") };
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { Pencil, RefreshCw, Search } from "lucide-react";
+import { KeyRound, Pencil, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextField, Toggle } from "@/components/admin/form";
 import { formatBdt } from "@/components/rent/shared";
 import { Modal } from "@/components/ui/modal";
@@ -17,22 +17,122 @@ type Show = "enabled" | "rent" | "all";
 const PAGE = 60;
 const isRent = (service: AdminRentServiceDTO) => /\brent\b/i.test(service.name) || service.type === "REMOTE";
 
-function ProviderBalance() {
-  const [text, setText] = useState("Checking…");
-  useEffect(() => {
-    let active = true;
-    apiFetch<{ account: { credit: number; currency: string } }>("/api/rent-provider")
-      .then(({ account }) => active && setText(`${account.credit.toFixed(2)} ${account.currency}`))
-      .catch((error: unknown) => active && setText(errorMessage(error)));
-    return () => {
-      active = false;
-    };
-  }, []);
+type ProviderInfo = {
+  settings: { url: string; username: string; keyHint: string; hasKey: boolean; source: "admin" | "env" | "none" };
+  account: { credit: number; currency: string } | null;
+  accountError: string | null;
+};
+
+function ProviderConnectionForm({
+  settings,
+  onSaved,
+  onCancel,
+}: {
+  settings: ProviderInfo["settings"];
+  onSaved: (info: ProviderInfo) => void;
+  onCancel: () => void;
+}) {
+  const [url, setUrl] = useState(settings.url);
+  const [username, setUsername] = useState(settings.username);
+  const [key, setKey] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setErrors({});
+    try {
+      const info = await apiFetch<ProviderInfo>("/api/rent-provider", { method: "PUT", body: { url, username, key } });
+      toast.success("Connected and saved.");
+      onSaved(info);
+    } catch (error) {
+      setErrors(fieldErrorsOf(error));
+      toast.error(errorMessage(error));
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="admin-card p-4">
-      <p className="text-sm text-admin-muted">Provider balance</p>
-      <p className="mt-1 text-xl font-semibold">{text}</p>
-      <p className="mt-1 text-xs text-admin-muted">Orders fail while this is lower than the service cost.</p>
+    <form onSubmit={submit} noValidate className="space-y-4">
+      <TextField
+        label="API URL"
+        type="url"
+        placeholder="https://example.com/public/api/index.php"
+        value={url}
+        onChange={setUrl}
+        error={errors.url}
+        required
+      />
+      <TextField label="Username" value={username} onChange={setUsername} error={errors.username} autoComplete="off" required />
+      <TextField
+        label="API key"
+        type="password"
+        autoComplete="new-password"
+        placeholder={settings.hasKey ? `Saved (${settings.keyHint})` : "Paste the API key"}
+        hint={settings.hasKey ? "Leave blank to keep the current key." : undefined}
+        value={key}
+        onChange={setKey}
+        error={errors.key}
+      />
+      <p className="text-xs text-admin-muted">The details are tested with the provider before they are saved.</p>
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">
+          Cancel
+        </button>
+        <button type="submit" disabled={busy} className="admin-btn admin-btn-primary">
+          {busy ? "Testing…" : "Test & save"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ProviderCard() {
+  const { data, error, reload, setData } = useResource<ProviderInfo>("/api/rent-provider");
+  const [editing, setEditing] = useState(false);
+
+  const balance = data?.account
+    ? `${data.account.credit.toFixed(2)} ${data.account.currency}`
+    : data?.accountError ?? error ?? "Checking…";
+
+  return (
+    <div className="admin-card space-y-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-admin-muted">Provider balance</p>
+          <p className={`mt-1 font-semibold ${data?.account ? "text-xl" : "text-sm text-status-offline"}`}>{balance}</p>
+        </div>
+        <button type="button" onClick={reload} aria-label="Check again" className="admin-icon-btn">
+          <RefreshCw aria-hidden className="size-4" />
+        </button>
+      </div>
+      {data && (
+        <div className="space-y-0.5 border-t border-admin-line pt-3 text-xs text-admin-muted">
+          <p className="truncate">API: {data.settings.url || "not set"}</p>
+          <p className="truncate">
+            User: {data.settings.username || "not set"} · Key: {data.settings.keyHint || "not set"}
+          </p>
+          {data.settings.source === "env" && <p>Using values from the server .env file.</p>}
+        </div>
+      )}
+      <button type="button" onClick={() => setEditing(true)} disabled={!data} className="admin-btn admin-btn-secondary w-full">
+        <KeyRound aria-hidden className="size-4" /> Change API connection
+      </button>
+
+      <Modal open={editing} onClose={() => setEditing(false)} title="Provider API connection">
+        {editing && data && (
+          <ProviderConnectionForm
+            settings={data.settings}
+            onCancel={() => setEditing(false)}
+            onSaved={(info) => {
+              setData(() => info);
+              setEditing(false);
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
@@ -230,7 +330,7 @@ export function RentServicesManager() {
       ) : data ? (
         <>
           <div className="mb-6 grid gap-4 md:grid-cols-2">
-            <ProviderBalance />
+            <ProviderCard />
             <PricingCard key={JSON.stringify(data.config)} config={data.config} rate={data.rate} onSaved={reload} />
           </div>
 

@@ -299,3 +299,20 @@ export const rentOrderSchema = z.object({
   serviceId: z.string().regex(/^[a-f\d]{24}$/i, "Choose a service"),
   fields: z.record(z.string(), z.string().max(1000)).default({}),
 });
+
+export const providerSettingsSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .max(500, "This URL is too long")
+    .refine((value) => {
+      try {
+        return ["http:", "https:"].includes(new URL(value).protocol);
+      } catch {
+        return false;
+      }
+    }, "Enter the full API URL, e.g. https://example.com/public/api/index.php"),
+  username: text(200, "Username"),
+  /** Blank keeps the saved key. */
+  key: z.string().trim().max(500, "This key is too long").default(""),
+});
