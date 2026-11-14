@@ -193,7 +193,16 @@ export interface ProviderDTO {
   enabledServiceCount: number;
 }
 
+/** The newest order placed for a service, to spot services the provider refuses. */
+export interface RentLastOrderDTO {
+  status: RentOrderStatus;
+  /** The provider's reason when it refused the order. */
+  note: string;
+  at: string;
+}
+
 export interface AdminRentServiceDTO {
+  lastOrder: RentLastOrderDTO | null;
   id: string;
   provider: string;
   providerName: string;

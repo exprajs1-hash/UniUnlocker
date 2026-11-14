@@ -4,7 +4,6 @@ import { ApiError } from "@/lib/api";
 import {
   getProviderOrder,
   placeProviderOrder,
-  providerTextToPlain,
   ProviderRejectedError,
   ProviderUnavailableError,
 } from "@/lib/gsm-api";
@@ -24,6 +23,7 @@ import type {
   BalanceTransactionType,
   PublicRentServiceDTO,
   RentConfigDTO,
+  RentLastOrderDTO,
   RentOrderDTO,
   RentOrderStatus,
 } from "@/types";
@@ -75,10 +75,15 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentSe
   };
 }
 
-export function toAdminService(doc: ServiceDoc, pricing: Pricing, providerNames: Map<string, string>): AdminRentServiceDTO {
+export function toAdminService(
+  doc: ServiceDoc,
+  pricing: Pricing,
+  providerNames: Map<string, string>,
+  lastOrder: RentLastOrderDTO | null = null,
+): AdminRentServiceDTO {
   return {
     ...serialize<AdminRentServiceDTO>(doc),
-    info: providerTextToPlain(doc.info),
+    lastOrder,
     description: doc.description ?? "",
     provider: String(doc.provider),
     providerName: providerNames.get(String(doc.provider)) ?? "Deleted provider",

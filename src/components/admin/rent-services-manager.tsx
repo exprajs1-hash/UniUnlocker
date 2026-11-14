@@ -13,7 +13,26 @@ import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/cl
 import type { AdminRentServiceDTO, RentConfigDTO } from "@/types";
 
 type Data = { services: AdminRentServiceDTO[]; config: RentConfigDTO; rate: number };
-type Show = "enabled" | "rent" | "all";
+type Show = "enabled" | "rent" | "all" | "problems";
+
+const failedLastOrder = (service: AdminRentServiceDTO) =>
+  service.lastOrder !== null && ["rejected", "failed"].includes(service.lastOrder.status);
+
+function LastOrderBadge({ service }: { service: AdminRentServiceDTO }) {
+  const last = service.lastOrder;
+  if (!last) return <span className="text-admin-muted">Not ordered yet</span>;
+  if (failedLastOrder(service)) {
+    return (
+      <span className="rounded bg-status-offline/15 px-1.5 py-0.5 text-status-offline">
+        ✕ Last order failed{last.note ? `: ${last.note}` : ""}
+      </span>
+    );
+  }
+  if (last.status === "completed") {
+    return <span className="rounded bg-status-online/15 px-1.5 py-0.5 text-status-online">✓ Last order completed</span>;
+  }
+  return <span className="rounded bg-status-maintenance/15 px-1.5 py-0.5 text-status-maintenance">… Last order in progress</span>;
+}
 
 const PAGE = 60;
 const isRent = (service: AdminRentServiceDTO) => /\brent\b/i.test(service.name) || service.type === "REMOTE";
@@ -162,6 +181,7 @@ export function RentServicesManager() {
       if (providerFilter && service.provider !== providerFilter) return false;
       if (show === "enabled" && !service.enabled) return false;
       if (show === "rent" && !service.enabled && !isRent(service)) return false;
+      if (show === "problems" && !failedLastOrder(service) && service.availableOnProvider) return false;
       if (!needle) return true;
       return `${service.name} ${service.title} ${service.group} ${service.serviceId} ${service.providerName}`.toLowerCase().includes(needle);
     });
@@ -173,7 +193,14 @@ export function RentServicesManager() {
   );
 
   const replace = (updated: AdminRentServiceDTO) =>
-    setData((current) => current && { ...current, services: current.services.map((s) => (s.id === updated.id ? updated : s)) });
+    setData(
+      (current) =>
+        current && {
+          ...current,
+          // Edits return the service without its order history, so keep the last-order info we have.
+          services: current.services.map((s) => (s.id === updated.id ? { ...updated, lastOrder: s.lastOrder } : s)),
+        },
+    );
 
   async function toggle(service: AdminRentServiceDTO, enabled: boolean) {
     replace({ ...service, enabled });
@@ -190,6 +217,7 @@ export function RentServicesManager() {
   }
 
   const enabledCount = services?.filter((service) => service.enabled).length ?? 0;
+  const problemCount = services?.filter((service) => failedLastOrder(service) || !service.availableOnProvider).length ?? 0;
 
   return (
     <>
@@ -264,6 +292,7 @@ export function RentServicesManager() {
                     <option value="rent">Rent / remote services</option>
                     <option value="enabled">Shown on website ({enabledCount})</option>
                     <option value="all">All services ({data.services.length})</option>
+                    <option value="problems">Problem services ({problemCount})</option>
                   </select>
                 </label>
               </div>
@@ -299,14 +328,9 @@ export function RentServicesManager() {
                             ? `Customer enters: ${service.customFields.map((f) => `${f.name}${f.required ? "*" : ""}`).join(", ")}`
                             : "No customer input needed"}
                         </p>
-                        {service.info && (
-                          <details className="mt-1 text-xs">
-                            <summary className="cursor-pointer text-primary select-none">Provider details</summary>
-                            <p className="mt-1 max-h-60 overflow-y-auto rounded bg-admin-bg p-2 whitespace-pre-line text-admin-muted">
-                              {service.info}
-                            </p>
-                          </details>
-                        )}
+                        <p className="mt-1 text-xs">
+                          <LastOrderBadge service={service} />
+                        </p>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right text-sm">
