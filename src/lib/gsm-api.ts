@@ -115,7 +115,15 @@ interface RawService {
   CREDIT?: number | string;
   TIME?: string;
   INFO?: string;
-  "Requires.Custom"?: { fieldname?: string; fieldtype?: string; fieldoptions?: string; required?: string }[];
+  /** Usually an array; some providers send "" when there are none, or an object keyed by index. */
+  "Requires.Custom"?: unknown;
+}
+
+type RawCustomField = { fieldname?: unknown; fieldtype?: unknown; fieldoptions?: unknown; required?: unknown };
+
+function rawCustomFields(value: unknown): RawCustomField[] {
+  const list = Array.isArray(value) ? value : value && typeof value === "object" ? Object.values(value) : [];
+  return list.filter((field): field is RawCustomField => Boolean(field) && typeof field === "object");
 }
 
 export async function listProviderServices(credentials: ProviderCredentials): Promise<ProviderService[]> {
@@ -134,7 +142,7 @@ export async function listProviderServices(credentials: ProviderCredentials): Pr
         costUsd: Number(raw.CREDIT) || 0,
         deliveryTime: String(raw.TIME ?? "").trim(),
         info: String(raw.INFO ?? "").trim(),
-        customFields: (raw["Requires.Custom"] ?? [])
+        customFields: rawCustomFields(raw["Requires.Custom"])
           .filter((field) => field.fieldname)
           .map((field) => ({
             name: String(field.fieldname).trim(),
