@@ -3,7 +3,7 @@
 import { Pencil, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
-import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextField, Toggle } from "@/components/admin/form";
+import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextAreaField, TextField, Toggle } from "@/components/admin/form";
 import { ProvidersPanel } from "@/components/admin/providers-panel";
 import { formatBdt } from "@/components/rent/shared";
 import { Modal } from "@/components/ui/modal";
@@ -80,6 +80,7 @@ function ServiceForm({
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(service.title);
+  const [description, setDescription] = useState(service.description);
   const [price, setPrice] = useState(service.priceBdt === null ? "" : String(service.priceBdt));
   const [order, setOrder] = useState(String(service.displayOrder));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,7 +94,7 @@ function ServiceForm({
     try {
       const result = await apiFetch<{ service: AdminRentServiceDTO }>(`/api/rent-services/${service.id}`, {
         method: "PATCH",
-        body: { title, priceBdt: price, displayOrder: order },
+        body: { title, description, priceBdt: price, displayOrder: order },
       });
       toast.success("Service updated.");
       onSaved(result.service);
@@ -115,6 +116,14 @@ function ServiceForm({
         value={title}
         onChange={setTitle}
         error={errors.title}
+      />
+      <TextAreaField
+        label="Description on website"
+        hint="Shown to customers in the rent dialog. Leave blank to show none. The provider's text is never shown."
+        value={description}
+        onChange={setDescription}
+        error={errors.description}
+        rows={5}
       />
       <TextField
         label="Fixed price (BDT)"

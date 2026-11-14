@@ -206,7 +206,10 @@ export interface AdminRentServiceDTO {
   /** The price customers pay now, fixed or calculated. */
   effectivePriceBdt: number;
   deliveryTime: string;
+  /** Provider's notes (admin reference only). */
   info: string;
+  /** Admin-written text shown on the website. */
+  description: string;
   customFields: RentCustomFieldDTO[];
   enabled: boolean;
   availableOnProvider: boolean;

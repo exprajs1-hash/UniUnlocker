@@ -273,6 +273,7 @@ export const customerPatchSchema = z.object({ active: z.boolean() });
 export const rentServicePatchSchema = z.object({
   enabled: z.boolean().optional(),
   title: z.string().trim().max(200, "This value is too long").optional(),
+  description: z.string().trim().max(3000, "This description is too long").optional(),
   priceBdt: z
     .preprocess(
       (value) => (typeof value === "string" ? (value.trim() === "" ? null : Number(value.trim())) : value),
