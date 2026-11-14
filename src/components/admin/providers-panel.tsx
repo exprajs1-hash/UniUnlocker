@@ -22,11 +22,12 @@ function ProviderForm({
     url: provider?.url ?? "",
     username: provider?.username ?? "",
     key: "",
+    useProxy: provider?.useProxy ?? false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const set = (field: keyof typeof draft) => (value: string) => {
+  const set = (field: "name" | "url" | "username" | "key") => (value: string) => {
     setDraft((current) => ({ ...current, [field]: value }));
     setErrors((current) => clearFieldError(current, field));
   };
@@ -73,6 +74,16 @@ function ProviderForm({
         error={errors.key}
         required={!provider}
       />
+      <div>
+        <Toggle
+          label="Connect through the fixed-IP proxy"
+          checked={draft.useProxy}
+          onChange={(useProxy) => setDraft((current) => ({ ...current, useProxy }))}
+        />
+        <p className="mt-1 text-xs text-admin-muted">
+          Turn on for providers that only allow whitelisted IPs. Give them the proxy server&apos;s IP (set by PROVIDER_PROXY_URL).
+        </p>
+      </div>
       <p className="text-xs text-admin-muted">The details are tested with the provider before they are saved.</p>
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">
@@ -199,6 +210,7 @@ export function ProvidersPanel({ onServicesChanged }: { onServicesChanged: () =>
                 <p className="font-medium">{provider.name}</p>
                 <p className="truncate text-xs text-admin-muted">
                   {provider.url} · {provider.username} · key {provider.keyHint || "not set"}
+                  {provider.useProxy ? " · via proxy" : ""}
                 </p>
                 <p className="text-xs text-admin-muted">
                   {provider.serviceCount} services, {provider.enabledServiceCount} shown · Balance{" "}

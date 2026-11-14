@@ -184,6 +184,8 @@ export interface ProviderDTO {
   keyHint: string;
   enabled: boolean;
   displayOrder: number;
+  /** API calls go through the fixed-IP proxy (PROVIDER_PROXY_URL). */
+  useProxy: boolean;
   serviceCount: number;
   enabledServiceCount: number;
 }

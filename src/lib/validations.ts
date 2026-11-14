@@ -316,6 +316,7 @@ export const providerSchema = z.object({
   username: text(200, "Username"),
   /** Required when adding; blank when editing keeps the saved key. */
   key: z.string().trim().max(500, "This key is too long").default(""),
+  useProxy: z.boolean().default(false),
 });
 
 export const providerPatchSchema = z.object({ enabled: z.boolean() });

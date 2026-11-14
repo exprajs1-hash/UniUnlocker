@@ -12,12 +12,14 @@ import type { ProviderDTO } from "@/types";
 
 type ProviderDoc = IProvider & { _id: unknown };
 
-export function credentialsOf(doc: Pick<IProvider, "url" | "username" | "apiKeyEncrypted">): ProviderCredentials {
+export function credentialsOf(
+  doc: Pick<IProvider, "url" | "username" | "apiKeyEncrypted"> & { useProxy?: boolean },
+): ProviderCredentials {
   const key = doc.apiKeyEncrypted ? decryptSecret(doc.apiKeyEncrypted) : null;
   if (doc.apiKeyEncrypted && !key) {
     console.error("[rent] A provider API key could not be decrypted; re-enter it in the admin panel.");
   }
-  return { url: doc.url, username: doc.username, key: key ?? "" };
+  return { url: doc.url, username: doc.username, key: key ?? "", useProxy: doc.useProxy ?? false };
 }
 
 /** Loads one provider's credentials. Throws a 404/503 ApiError when it cannot be used. */
@@ -39,6 +41,7 @@ export function toProviderDTO(doc: ProviderDoc, counts?: { services: number; ena
     keyHint: key ? `••••${key.slice(-4)}` : doc.apiKeyEncrypted ? "unreadable – re-enter" : "",
     enabled: doc.enabled,
     displayOrder: doc.displayOrder,
+    useProxy: doc.useProxy ?? false,
     serviceCount: counts?.services ?? 0,
     enabledServiceCount: counts?.enabled ?? 0,
   };

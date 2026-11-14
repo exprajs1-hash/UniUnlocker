@@ -25,7 +25,7 @@ export const POST = adminRoute(async (request) => {
   if (!data.key) throw new ApiError(422, "Enter the API key.", undefined, { key: "API key is required" });
 
   try {
-    await getProviderAccount({ url: data.url, username: data.username, key: data.key });
+    await getProviderAccount({ url: data.url, username: data.username, key: data.key, useProxy: data.useProxy });
   } catch (error) {
     if (error instanceof ProviderRejectedError || error instanceof ProviderUnavailableError) {
       throw new ApiError(422, `Not saved – the provider did not accept these details: ${error.message}`);
@@ -40,6 +40,7 @@ export const POST = adminRoute(async (request) => {
     url: data.url,
     username: data.username,
     apiKeyEncrypted: encryptSecret(data.key),
+    useProxy: data.useProxy,
     displayOrder: count,
   });
   return json({ provider: toProviderDTO(provider.toObject()) }, 201);

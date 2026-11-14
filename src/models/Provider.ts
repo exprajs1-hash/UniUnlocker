@@ -10,6 +10,8 @@ export interface IProvider {
   /** A disabled provider's services are hidden and cannot be ordered. */
   enabled: boolean;
   displayOrder: number;
+  /** Route API calls through PROVIDER_PROXY_URL, for providers that only allow whitelisted IPs. */
+  useProxy: boolean;
 }
 
 const ProviderSchema = new Schema<IProvider>(
@@ -20,6 +22,7 @@ const ProviderSchema = new Schema<IProvider>(
     apiKeyEncrypted: { type: String, required: true, select: false },
     enabled: { type: Boolean, default: true },
     displayOrder: { type: Number, default: 0 },
+    useProxy: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

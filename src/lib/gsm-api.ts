@@ -1,4 +1,5 @@
 import "server-only";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 /**
  * Client for the GSM-THEME reseller API, which follows the DHRU Fusion format:
@@ -21,6 +22,17 @@ export interface ProviderCredentials {
   url: string;
   username: string;
   key: string;
+  /** Send this provider's calls through PROVIDER_PROXY_URL (a fixed-IP proxy the provider has whitelisted). */
+  useProxy?: boolean;
+}
+
+let proxyAgent: ProxyAgent | null = null;
+
+function getProxyAgent(): ProxyAgent {
+  const proxyUrl = process.env.PROVIDER_PROXY_URL?.trim();
+  if (!proxyUrl) throw new ProviderUnavailableError("This provider is set to use the proxy, but PROVIDER_PROXY_URL is not set.");
+  proxyAgent ??= new ProxyAgent(proxyUrl);
+  return proxyAgent;
 }
 
 function escapeXml(value: string): string {
@@ -45,19 +57,17 @@ async function call(
   action: string,
   parameters?: string,
 ): Promise<Record<string, unknown>> {
-  const { url, username, key } = credentials;
+  const { url, username, key, useProxy } = credentials;
   if (!url || !username || !key) throw new ProviderUnavailableError("This provider is missing its API URL, username or key.");
   const body = new URLSearchParams({ username, apiaccesskey: key, action, requestformat: "JSON" });
   if (parameters) body.set("parameters", parameters);
+  const dispatcher = useProxy ? getProxyAgent() : undefined;
 
   let reply: ProviderReply;
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      body,
-      cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    const response = dispatcher
+      ? await undiciFetch(url, { method: "POST", body, dispatcher, signal: AbortSignal.timeout(TIMEOUT_MS) })
+      : await fetch(url, { method: "POST", body, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
     reply = (await response.json()) as ProviderReply;
   } catch (error) {
     throw new ProviderUnavailableError(`Could not reach the rent provider: ${(error as Error).message}`);
