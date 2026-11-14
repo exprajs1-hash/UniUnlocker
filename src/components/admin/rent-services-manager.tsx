@@ -282,7 +282,9 @@ export function RentServicesManager() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">
                           {service.title || service.name}
-                          {!service.availableOnProvider && (
+                          {service.availableOnProvider ? (
+                            <span className="ml-2 rounded bg-status-online/15 px-1.5 py-0.5 text-xs text-status-online">Available</span>
+                          ) : (
                             <span className="ml-2 rounded bg-status-offline/15 px-1.5 py-0.5 text-xs text-status-offline">
                               Removed by provider
                             </span>
@@ -290,8 +292,21 @@ export function RentServicesManager() {
                         </p>
                         <p className="text-xs text-admin-muted">
                           {service.providerName} · #{service.serviceId} · {service.group} · {service.type}
-                          {service.customFields.length > 0 && ` · asks for ${service.customFields.map((f) => f.name).join(", ")}`}
+                          {service.deliveryTime && ` · ${service.deliveryTime}`}
                         </p>
+                        <p className="text-xs text-admin-muted">
+                          {service.customFields.length > 0
+                            ? `Customer enters: ${service.customFields.map((f) => `${f.name}${f.required ? "*" : ""}`).join(", ")}`
+                            : "No customer input needed"}
+                        </p>
+                        {service.info && (
+                          <details className="mt-1 text-xs">
+                            <summary className="cursor-pointer text-primary select-none">Provider details</summary>
+                            <p className="mt-1 max-h-60 overflow-y-auto rounded bg-admin-bg p-2 whitespace-pre-line text-admin-muted">
+                              {service.info}
+                            </p>
+                          </details>
+                        )}
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right text-sm">
