@@ -17,7 +17,7 @@ export default async function AccountPage() {
       : null;
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-12 lg:px-8">
+    <div className="mx-auto max-w-5xl px-5 py-12 lg:px-8">
       <AccountDashboard contactUrl={contactUrl} />
     </div>
   );

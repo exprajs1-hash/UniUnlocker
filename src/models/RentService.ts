@@ -5,6 +5,8 @@ export interface IRentCustomField {
   type: string;
   options: string[];
   required: boolean;
+  /** Sent to the provider as the IMEI, not as a custom field. */
+  imei?: boolean;
 }
 
 /** A provider service, copied in by "Sync from provider". Hidden until the admin enables it. */
@@ -59,6 +61,7 @@ const RentServiceSchema = new Schema<IRentService>(
         type: { type: String },
         options: [String],
         required: Boolean,
+        imei: { type: Boolean, default: false },
       },
     ],
     minQuantity: { type: Number, default: 1 },

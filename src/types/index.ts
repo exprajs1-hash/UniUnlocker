@@ -162,6 +162,7 @@ export interface RentCustomFieldDTO {
   type: string;
   options: string[];
   required: boolean;
+  imei?: boolean;
 }
 
 /** What visitors see: the selling price only, never the provider cost. */
@@ -242,6 +243,21 @@ export interface RentOrderDTO {
   result: string;
   refunded: boolean;
   createdAt: string;
+}
+
+/** A customer's order totals for the account dashboard. */
+export interface RentOrderStatsDTO {
+  total: number;
+  /** Waiting at the provider (includes "confirming"). */
+  pending: number;
+  processing: number;
+  completed: number;
+  /** Rejected or failed; these are refunded. */
+  cancelled: number;
+  /** Taka held by orders that are still open. */
+  lockedBdt: number;
+  /** Taka spent on completed orders. */
+  spentBdt: number;
 }
 
 export interface AdminRentOrderDTO extends RentOrderDTO {

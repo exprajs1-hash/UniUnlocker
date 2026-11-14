@@ -244,7 +244,17 @@ export async function placeOrder(
   });
 
   try {
-    const reference = await placeProviderOrder(credentials, service.serviceId, fields, quantity);
+    // The IMEI field goes in <IMEI>; the rest in CUSTOMFIELD. A service with no input at all
+    // still needs one of them, so our order id stands in as the IMEI (server services ignore it).
+    const imeiName = (service.customFields ?? []).find((field) => field.imei)?.name;
+    const customFields = { ...fields };
+    let imei = "";
+    if (imeiName && fields[imeiName]) {
+      imei = fields[imeiName];
+      delete customFields[imeiName];
+    }
+    if (!imei && Object.keys(customFields).length === 0) imei = String(orderId);
+    const reference = await placeProviderOrder(credentials, service.serviceId, customFields, quantity, imei);
     order.providerOrderId = reference;
     order.status = "pending";
     await order.save();

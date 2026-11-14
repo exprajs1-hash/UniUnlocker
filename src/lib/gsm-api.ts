@@ -95,6 +95,16 @@ export interface ProviderCustomField {
   type: string;
   options: string[];
   required: boolean;
+  /** The provider's IMEI/main input: sent as <IMEI>, not inside CUSTOMFIELD. */
+  imei?: boolean;
+}
+
+/** The IMEI/main input a service asks for, from the provider's CUSTOM block ("allow": "1"). */
+function imeiField(custom: unknown): ProviderCustomField | null {
+  if (!custom || typeof custom !== "object" || Array.isArray(custom)) return null;
+  const block = custom as { allow?: unknown; customname?: unknown };
+  if (String(block.allow ?? "") !== "1") return null;
+  return { name: String(block.customname ?? "").trim() || "IMEI", type: "text", options: [], required: true, imei: true };
 }
 
 export interface ProviderService {
@@ -122,6 +132,8 @@ interface RawService {
   QNT?: number | string;
   MINQNT?: number | string;
   MAXQNT?: number | string;
+  /** IMEI input settings: { allow: "1", customname: "IMEI", ... } when the service takes one. */
+  CUSTOM?: unknown;
   /** Usually an array; some providers send "" when there are none, or an object keyed by index. */
   "Requires.Custom"?: unknown;
 }
@@ -160,17 +172,20 @@ export async function listProviderServices(credentials: ProviderCredentials): Pr
         deliveryTime: String(raw.TIME ?? "").trim(),
         info: String(raw.INFO ?? "").trim(),
         ...quantityLimits(raw),
-        customFields: rawCustomFields(raw["Requires.Custom"])
-          .filter((field) => field.fieldname)
-          .map((field) => ({
-            name: String(field.fieldname).trim(),
-            type: String(field.fieldtype ?? "text"),
-            options: String(field.fieldoptions ?? "")
-              .split(",")
-              .map((option) => option.trim())
-              .filter(Boolean),
-            required: field.required === "on",
-          })),
+        customFields: [
+          ...[imeiField(raw.CUSTOM)].filter((field): field is ProviderCustomField => field !== null),
+          ...rawCustomFields(raw["Requires.Custom"])
+            .filter((field) => field.fieldname)
+            .map((field) => ({
+              name: String(field.fieldname).trim(),
+              type: String(field.fieldtype ?? "text"),
+              options: String(field.fieldoptions ?? "")
+                .split(",")
+                .map((option) => option.trim())
+                .filter(Boolean),
+              required: field.required === "on",
+            })),
+        ].filter((field, index, all) => all.findIndex((other) => other.name === field.name) === index),
       });
     }
   }
@@ -183,8 +198,12 @@ export async function placeProviderOrder(
   serviceId: number,
   fields: Record<string, string>,
   quantity = 1,
+  imei = "",
 ): Promise<string> {
-  let parameters = `<PARAMETERS><ID>${serviceId}</ID><QNT>${quantity}</QNT>`;
+  let parameters = `<PARAMETERS><ID>${serviceId}</ID>`;
+  // DHRU panels refuse an order with neither an IMEI nor a custom field ("Missing IMEI or service input").
+  if (imei) parameters += `<IMEI>${escapeXml(imei)}</IMEI>`;
+  parameters += `<QNT>${quantity}</QNT>`;
   if (Object.keys(fields).length > 0) {
     const encoded = Buffer.from(JSON.stringify(fields), "utf8").toString("base64");
     parameters += `<CUSTOMFIELD>${escapeXml(encoded)}</CUSTOMFIELD>`;

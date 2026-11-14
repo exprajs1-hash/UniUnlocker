@@ -1,8 +1,24 @@
 "use client";
 
-import { LogOut, RefreshCw, ShoppingCart, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  Ban,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Loader,
+  Lock,
+  LogOut,
+  PlusCircle,
+  Receipt,
+  RefreshCw,
+  ShoppingBag,
+  ShoppingCart,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   formatBdt,
   formatSignedBdt,
@@ -13,7 +29,7 @@ import {
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
-import type { BalanceTransactionDTO, RentOrderDTO } from "@/types";
+import type { BalanceTransactionDTO, RentOrderDTO, RentOrderStatsDTO } from "@/types";
 
 interface Me {
   name: string;
@@ -23,12 +39,132 @@ interface Me {
 }
 
 const POLL_MS = 20_000;
+const RECENT_COUNT = 5;
+const OPEN_STATUSES = ["submitting", "pending", "processing"];
+
+/* ------------------------------------------------------------------- clock */
+
+const CLOCK_TICK_MS = 15_000;
+const subscribeClock = (onTick: () => void) => {
+  const timer = setInterval(onTick, CLOCK_TICK_MS);
+  return () => clearInterval(timer);
+};
+const getClock = () => Math.floor(Date.now() / CLOCK_TICK_MS) * CLOCK_TICK_MS;
+const getServerClock = () => null;
+
+function LiveDate() {
+  const now = useSyncExternalStore(subscribeClock, getClock, getServerClock);
+  if (now === null) return null;
+  const date = new Date(now);
+  return (
+    <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+      <span className="inline-flex items-center gap-1.5">
+        <CalendarDays aria-hidden className="size-3.5" />
+        {date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <Clock aria-hidden className="size-3.5" />
+        {date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+      </span>
+    </p>
+  );
+}
+
+/* -------------------------------------------------------------- stat cards */
+
+type Tone = "primary" | "purple" | "cyan" | "online" | "offline" | "maintenance";
+
+const TONES: Record<Tone, { border: string; tile: string }> = {
+  primary: { border: "border-l-primary", tile: "bg-primary/20 text-primary" },
+  purple: { border: "border-l-purple", tile: "bg-purple/20 text-purple" },
+  cyan: { border: "border-l-cyan", tile: "bg-cyan/15 text-cyan" },
+  online: { border: "border-l-status-online", tile: "bg-status-online/15 text-status-online" },
+  offline: { border: "border-l-status-offline", tile: "bg-status-offline/15 text-status-offline" },
+  maintenance: { border: "border-l-status-maintenance", tile: "bg-status-maintenance/15 text-status-maintenance" },
+};
+
+function StatCard({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  hint,
+  children,
+}: {
+  icon: LucideIcon;
+  tone: Tone;
+  label: string;
+  value: string;
+  hint: string;
+  children?: React.ReactNode;
+}) {
+  const style = TONES[tone];
+  return (
+    <div className={`neon-card flex flex-col border-l-4 p-4 ${style.border}`}>
+      <div className="flex items-center gap-3">
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${style.tile}`}>
+          <Icon aria-hidden className="size-4.5" />
+        </span>
+        <p className="text-[11px] leading-tight font-semibold tracking-wide text-muted uppercase">{label}</p>
+      </div>
+      <p className="mt-3 font-display text-2xl font-bold tabular-nums">{value}</p>
+      <p className="text-xs text-muted">{hint}</p>
+      {children}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ orders */
+
+function OrderCard({ order }: { order: RentOrderDTO }) {
+  return (
+    <li className="neon-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs text-muted">
+            Order <span className="font-semibold text-foreground">#{order.id.slice(-6).toUpperCase()}</span> ·{" "}
+            <RelativeTime iso={order.createdAt} />
+          </p>
+          <h3 className="mt-0.5 font-semibold">{order.serviceName}</h3>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <span className="font-semibold text-cyan tabular-nums">
+            {formatBdt(order.priceBdt)}
+            {order.quantity > 1 && <span className="text-xs font-normal text-muted"> · qty {order.quantity}</span>}
+          </span>
+          <OrderStatusBadge status={order.status} refunded={order.refunded} />
+        </div>
+      </div>
+      {Object.keys(order.fields).length > 0 && (
+        <dl className="mt-2 space-y-0.5 text-sm text-muted">
+          {Object.entries(order.fields).map(([name, value]) => (
+            <div key={name}>
+              <dt className="inline">{name}: </dt>
+              <dd className="inline text-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {order.status === "completed" ? (
+        <OrderResult text={order.result} />
+      ) : order.result ? (
+        <p className="mt-2 text-sm whitespace-pre-line text-muted">{order.result}</p>
+      ) : OPEN_STATUSES.includes(order.status) ? (
+        <p className="mt-2 text-sm text-muted">Your rent details will appear here as soon as they are ready.</p>
+      ) : null}
+    </li>
+  );
+}
+
+/* --------------------------------------------------------------- dashboard */
 
 export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) {
   const [me, setMe] = useState<Me | null>(null);
   const [orders, setOrders] = useState<RentOrderDTO[] | null>(null);
+  const [stats, setStats] = useState<RentOrderStatsDTO | null>(null);
   const [transactions, setTransactions] = useState<BalanceTransactionDTO[] | null>(null);
   const [tab, setTab] = useState<"orders" | "wallet">("orders");
+  const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -37,11 +173,12 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
     try {
       const [meData, orderData, txData] = await Promise.all([
         apiFetch<{ customer: Me }>("/api/me"),
-        apiFetch<{ orders: RentOrderDTO[] }>("/api/me/orders"),
+        apiFetch<{ orders: RentOrderDTO[]; stats: RentOrderStatsDTO }>("/api/me/orders"),
         apiFetch<{ transactions: BalanceTransactionDTO[] }>("/api/me/transactions"),
       ]);
       setMe(meData.customer);
       setOrders(orderData.orders);
+      setStats(orderData.stats);
       setTransactions(txData.transactions);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -57,7 +194,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
   }, [load]);
 
   // While an order is still open, check back regularly so the login appears without a reload.
-  const hasOpen = orders?.some((order) => ["submitting", "pending", "processing"].includes(order.status)) ?? false;
+  const hasOpen = orders?.some((order) => OPEN_STATUSES.includes(order.status)) ?? false;
   useEffect(() => {
     if (!hasOpen) return;
     const timer = setInterval(() => void load(), POLL_MS);
@@ -77,33 +214,80 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
   if (!me) {
     return (
       <div role="status" aria-label="Loading" className="space-y-4">
-        <div className="skeleton h-32" />
+        <div className="skeleton h-40" />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, index) => (
+            <div key={index} className="skeleton h-32" />
+          ))}
+        </div>
         <div className="skeleton h-64" />
       </div>
     );
   }
 
+  const s = stats ?? { total: 0, pending: 0, processing: 0, completed: 0, cancelled: 0, lockedBdt: 0, spentBdt: 0 };
+  const visibleOrders = orders ? (showAll ? orders : orders.slice(0, RECENT_COUNT)) : [];
+
   return (
     <div className="space-y-6">
-      <section className="neon-card flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm text-muted">Signed in as</p>
-          <h1 className="truncate font-display text-xl font-bold">{me.name}</h1>
-          <p className="truncate text-sm text-muted">{me.email}</p>
+      {/* Welcome */}
+      <section className="neon-card overflow-hidden p-5 sm:p-6">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/25 via-purple/15 to-cyan/10" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-purple font-display text-xl font-bold text-white shadow-lg shadow-primary/30">
+              {me.name.trim().charAt(0).toUpperCase() || "?"}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm text-muted">Welcome back</p>
+              <h1 className="truncate font-display text-xl font-bold sm:text-2xl">{me.name}</h1>
+              <p className="truncate text-sm text-muted">{me.email}</p>
+            </div>
+          </div>
+          <div className="grid shrink-0 grid-cols-2 gap-2">
+            <div className="rounded-xl border border-line/60 bg-background/40 px-4 py-2.5">
+              <p className="inline-flex items-center gap-1.5 text-xs text-muted">
+                <Wallet aria-hidden className="size-3.5" /> Current balance
+              </p>
+              <p className="text-lg font-bold text-neon tabular-nums">{formatBdt(me.balance)}</p>
+            </div>
+            <div className="rounded-xl border border-line/60 bg-background/40 px-4 py-2.5">
+              <p className="inline-flex items-center gap-1.5 text-xs text-muted">
+                <ShoppingCart aria-hidden className="size-3.5" /> Total orders
+              </p>
+              <p className="text-lg font-bold tabular-nums">{s.total}</p>
+            </div>
+          </div>
         </div>
-        <div className="sm:text-right">
-          <p className="inline-flex items-center gap-1.5 text-sm text-muted">
-            <Wallet aria-hidden className="size-4" /> Balance
-          </p>
-          <p className="text-3xl font-bold text-neon">{formatBdt(me.balance)}</p>
-          {contactUrl && (
-            <a href={contactUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-cyan hover:underline">
-              Add balance – contact us
-            </a>
-          )}
+        <div className="relative">
+          <LiveDate />
         </div>
       </section>
 
+      {/* Stats */}
+      <section aria-label="Account summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard icon={Wallet} tone="primary" label="Current balance" value={formatBdt(me.balance)} hint="Available to spend">
+          {contactUrl && (
+            <a
+              href={contactUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-neon mt-3 min-h-9! w-full px-3! text-xs sm:text-sm"
+            >
+              <PlusCircle aria-hidden className="size-4" /> Add balance
+            </a>
+          )}
+        </StatCard>
+        <StatCard icon={Receipt} tone="purple" label="Total spent" value={formatBdt(s.spentBdt)} hint="On completed orders" />
+        <StatCard icon={ShoppingBag} tone="cyan" label="Total orders" value={String(s.total)} hint="All time orders" />
+        <StatCard icon={Lock} tone="maintenance" label="Locked amount" value={formatBdt(s.lockedBdt)} hint="In processing" />
+        <StatCard icon={Clock} tone="maintenance" label="Pending" value={String(s.pending)} hint="Pending orders" />
+        <StatCard icon={Loader} tone="cyan" label="In process" value={String(s.processing)} hint="Active orders" />
+        <StatCard icon={CheckCircle2} tone="online" label="Completed" value={String(s.completed)} hint="Finished orders" />
+        <StatCard icon={Ban} tone="offline" label="Cancelled / Rejected" value={String(s.cancelled)} hint="Refunded or stopped" />
+      </section>
+
+      {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label="Account" className="flex gap-1 rounded-full border border-line/50 p-1">
           {(["orders", "wallet"] as const).map((key) => (
@@ -117,7 +301,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
                 tab === key ? "bg-primary text-white" : "text-muted hover:text-foreground"
               }`}
             >
-              {key === "orders" ? "My orders" : "Wallet history"}
+              {key === "orders" ? "Recent orders" : "Wallet history"}
             </button>
           ))}
         </div>
@@ -127,48 +311,44 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
         <Link href="/rent" className="btn-neon min-h-10! px-4! text-sm">
           <ShoppingCart aria-hidden className="size-4" /> Rent a tool
         </Link>
-        <button type="button" onClick={() => void signOut()} className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
+        >
           <LogOut aria-hidden className="size-4" /> Sign out
         </button>
       </div>
 
+      {/* Orders / wallet */}
       {tab === "orders" ? (
-        orders && orders.length > 0 ? (
-          <ul className="space-y-3">
-            {orders.map((order) => (
-              <li key={order.id} className="neon-card p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h2 className="font-semibold">{order.serviceName}</h2>
-                    <p className="text-sm text-muted">
-                      {formatBdt(order.priceBdt)} · <RelativeTime iso={order.createdAt} />
-                    </p>
-                  </div>
-                  <OrderStatusBadge status={order.status} refunded={order.refunded} />
-                </div>
-                {Object.keys(order.fields).length > 0 && (
-                  <dl className="mt-2 space-y-0.5 text-sm text-muted">
-                    {Object.entries(order.fields).map(([name, value]) => (
-                      <div key={name}>
-                        <dt className="inline">{name}: </dt>
-                        <dd className="inline text-foreground">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-                {order.status === "completed" ? (
-                  <OrderResult text={order.result} />
-                ) : order.result ? (
-                  <p className="mt-2 text-sm whitespace-pre-line text-muted">{order.result}</p>
-                ) : ["submitting", "pending", "processing"].includes(order.status) ? (
-                  <p className="mt-2 text-sm text-muted">Your rent details will appear here as soon as they are ready.</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="neon-card p-8 text-center text-muted">You have no orders yet.</p>
-        )
+        <section className="neon-card p-4 sm:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                <ShoppingBag aria-hidden className="size-4.5" />
+              </span>
+              <div>
+                <h2 className="font-display font-semibold">{showAll ? "All orders" : "Recent orders"}</h2>
+                <p className="text-xs text-muted">Your latest orders and their current status</p>
+              </div>
+            </div>
+            {orders && orders.length > RECENT_COUNT && (
+              <button type="button" onClick={() => setShowAll((value) => !value)} className="btn-neon min-h-9! px-4! text-sm">
+                {showAll ? "Show less" : "View all"} <ArrowRight aria-hidden className="size-4" />
+              </button>
+            )}
+          </div>
+          {visibleOrders.length > 0 ? (
+            <ul className="space-y-3">
+              {visibleOrders.map((order) => (
+                <OrderCard key={order.id} order={order} />
+              ))}
+            </ul>
+          ) : (
+            <p className="p-6 text-center text-muted">You have no orders yet.</p>
+          )}
+        </section>
       ) : transactions && transactions.length > 0 ? (
         <ul className="neon-card divide-y divide-line/30">
           {transactions.map((tx) => (
