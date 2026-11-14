@@ -139,6 +139,8 @@ export async function syncProvider(providerId: string): Promise<SyncResult> {
             deliveryTime: service.deliveryTime,
             info: service.info,
             customFields: service.customFields,
+            minQuantity: service.minQuantity,
+            maxQuantity: service.maxQuantity,
             availableOnProvider: true,
             syncedAt,
           },

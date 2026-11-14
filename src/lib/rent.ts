@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api";
 import {
   getProviderOrder,
   placeProviderOrder,
+  providerTextToPlain,
   ProviderRejectedError,
   ProviderUnavailableError,
 } from "@/lib/gsm-api";
@@ -66,9 +67,11 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentSe
     name: doc.title || doc.name,
     group: doc.group,
     deliveryTime: doc.deliveryTime,
-    info: doc.info,
+    info: providerTextToPlain(doc.info),
     priceBdt: effectivePrice(doc, pricing),
     customFields: doc.customFields ?? [],
+    minQuantity: doc.minQuantity ?? 1,
+    maxQuantity: doc.maxQuantity ?? 1,
   };
 }
 
@@ -141,6 +144,7 @@ export function toOrderDTO(doc: Omit<IRentOrder, "customer"> & { _id: unknown })
   return {
     id: String(doc._id),
     serviceName: doc.serviceName,
+    quantity: doc.quantity ?? 1,
     priceBdt: doc.priceBdt,
     fields: doc.fields ?? {},
     status: doc.status,
@@ -188,6 +192,7 @@ export async function placeOrder(
   customerId: string,
   serviceId: string,
   input: Record<string, unknown>,
+  quantity = 1,
 ): Promise<PlaceOrderResult> {
   const pricing = await getPricing();
   if (!pricing.ordersEnabled) throw new ApiError(503, "New rent orders are paused right now. Please try again later.");
@@ -201,7 +206,13 @@ export async function placeOrder(
   });
 
   const fields = cleanFields(service, input);
-  const price = effectivePrice(service, pricing);
+  const minQuantity = service.minQuantity ?? 1;
+  const maxQuantity = service.maxQuantity ?? 1;
+  if (!Number.isInteger(quantity) || quantity < minQuantity || quantity > maxQuantity) {
+    const allowed = minQuantity === maxQuantity ? `${minQuantity}` : `${minQuantity}–${maxQuantity}`;
+    throw new ApiError(422, "Please check the highlighted fields.", undefined, { quantity: `Quantity must be ${allowed}` });
+  }
+  const price = effectivePrice(service, pricing) * quantity;
   const serviceName = service.title || service.name;
   const orderId = new Types.ObjectId();
 
@@ -225,14 +236,15 @@ export async function placeOrder(
     provider: service.provider,
     serviceId: service.serviceId,
     serviceName,
+    quantity,
     priceBdt: price,
-    costUsd: service.costUsd,
+    costUsd: service.costUsd * quantity,
     fields,
     status: "submitting",
   });
 
   try {
-    const reference = await placeProviderOrder(credentials, service.serviceId, fields);
+    const reference = await placeProviderOrder(credentials, service.serviceId, fields, quantity);
     order.providerOrderId = reference;
     order.status = "pending";
     await order.save();

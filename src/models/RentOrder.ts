@@ -8,6 +8,8 @@ export interface IRentOrder {
   /** Snapshot at order time, so later price or name edits do not change history. */
   serviceId: number;
   serviceName: string;
+  quantity: number;
+  /** Total charged: unit price × quantity. */
   priceBdt: number;
   costUsd: number;
   fields: Record<string, string>;
@@ -27,6 +29,7 @@ const RentOrderSchema = new Schema<IRentOrder>(
     provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true },
     serviceId: { type: Number, required: true },
     serviceName: { type: String, required: true },
+    quantity: { type: Number, default: 1 },
     priceBdt: { type: Number, required: true },
     costUsd: { type: Number, default: 0 },
     fields: { type: Schema.Types.Mixed, default: {} },

@@ -17,7 +17,7 @@ export const GET = route(async (request) => {
 
 export const POST = route(async (request) => {
   const customer = await requireCustomer(request);
-  const { serviceId, fields } = rentOrderSchema.parse(await readJson(request));
+  const { serviceId, fields, quantity } = rentOrderSchema.parse(await readJson(request));
 
   const limit = await consumeRateLimit("rent-order", customer.id, MAX_ORDERS_PER_MINUTE, 60);
   if (!limit.allowed) {
@@ -26,6 +26,6 @@ export const POST = route(async (request) => {
     });
   }
 
-  const result = await placeOrder(customer.id, serviceId, fields);
+  const result = await placeOrder(customer.id, serviceId, fields, quantity);
   return json(result, 201);
 });

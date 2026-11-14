@@ -106,6 +106,9 @@ export interface ProviderService {
   deliveryTime: string;
   info: string;
   customFields: ProviderCustomField[];
+  /** Order quantity limits. Services the provider does not sell by quantity are fixed at 1. */
+  minQuantity: number;
+  maxQuantity: number;
 }
 
 interface RawService {
@@ -115,6 +118,10 @@ interface RawService {
   CREDIT?: number | string;
   TIME?: string;
   INFO?: string;
+  /** "1" when the service is sold by quantity; MINQNT/MAXQNT then give the limits. */
+  QNT?: number | string;
+  MINQNT?: number | string;
+  MAXQNT?: number | string;
   /** Usually an array; some providers send "" when there are none, or an object keyed by index. */
   "Requires.Custom"?: unknown;
 }
@@ -124,6 +131,16 @@ type RawCustomField = { fieldname?: unknown; fieldtype?: unknown; fieldoptions?:
 function rawCustomFields(value: unknown): RawCustomField[] {
   const list = Array.isArray(value) ? value : value && typeof value === "object" ? Object.values(value) : [];
   return list.filter((field): field is RawCustomField => Boolean(field) && typeof field === "object");
+}
+
+const MAX_QUANTITY = 1000;
+
+function quantityLimits(raw: RawService): { minQuantity: number; maxQuantity: number } {
+  if (String(raw.QNT ?? "") !== "1") return { minQuantity: 1, maxQuantity: 1 };
+  const toInt = (value: unknown) => Math.floor(Number(value));
+  const min = Math.min(Math.max(toInt(raw.MINQNT) || 1, 1), MAX_QUANTITY);
+  const max = Math.min(Math.max(toInt(raw.MAXQNT) || min, min), MAX_QUANTITY);
+  return { minQuantity: min, maxQuantity: max };
 }
 
 export async function listProviderServices(credentials: ProviderCredentials): Promise<ProviderService[]> {
@@ -142,6 +159,7 @@ export async function listProviderServices(credentials: ProviderCredentials): Pr
         costUsd: Number(raw.CREDIT) || 0,
         deliveryTime: String(raw.TIME ?? "").trim(),
         info: String(raw.INFO ?? "").trim(),
+        ...quantityLimits(raw),
         customFields: rawCustomFields(raw["Requires.Custom"])
           .filter((field) => field.fieldname)
           .map((field) => ({
@@ -164,8 +182,9 @@ export async function placeProviderOrder(
   credentials: ProviderCredentials,
   serviceId: number,
   fields: Record<string, string>,
+  quantity = 1,
 ): Promise<string> {
-  let parameters = `<PARAMETERS><ID>${serviceId}</ID><QNT>1</QNT>`;
+  let parameters = `<PARAMETERS><ID>${serviceId}</ID><QNT>${quantity}</QNT>`;
   if (Object.keys(fields).length > 0) {
     const encoded = Buffer.from(JSON.stringify(fields), "utf8").toString("base64");
     parameters += `<CUSTOMFIELD>${escapeXml(encoded)}</CUSTOMFIELD>`;

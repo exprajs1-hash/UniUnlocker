@@ -298,6 +298,7 @@ export const rentConfigSchema = z.object({
 export const rentOrderSchema = z.object({
   serviceId: z.string().regex(/^[a-f\d]{24}$/i, "Choose a service"),
   fields: z.record(z.string(), z.string().max(1000)).default({}),
+  quantity: z.number().int("Quantity must be a whole number").min(1, "Quantity must be at least 1").max(1000).default(1),
 });
 
 export const providerSchema = z.object({

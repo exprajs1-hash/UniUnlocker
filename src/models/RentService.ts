@@ -25,6 +25,9 @@ export interface IRentService {
   deliveryTime: string;
   info: string;
   customFields: IRentCustomField[];
+  /** Quantity a customer may order, from the provider. 1–1 for services not sold by quantity. */
+  minQuantity: number;
+  maxQuantity: number;
   enabled: boolean;
   /** False when the last sync no longer listed this service. */
   availableOnProvider: boolean;
@@ -54,6 +57,8 @@ const RentServiceSchema = new Schema<IRentService>(
         required: Boolean,
       },
     ],
+    minQuantity: { type: Number, default: 1 },
+    maxQuantity: { type: Number, default: 1 },
     enabled: { type: Boolean, default: false },
     availableOnProvider: { type: Boolean, default: true },
     displayOrder: { type: Number, default: 0 },

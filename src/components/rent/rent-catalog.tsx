@@ -40,6 +40,9 @@ function OrderForm({
   onCancel: () => void;
 }) {
   const [fields, setFields] = useState<Record<string, string>>({});
+  const minQuantity = service.minQuantity ?? 1;
+  const maxQuantity = Math.max(service.maxQuantity ?? 1, minQuantity);
+  const [quantityText, setQuantityText] = useState(String(minQuantity));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,7 +65,14 @@ function OrderForm({
     );
   }
 
-  const shortBy = service.priceBdt - me.balance;
+  const parsedQuantity = Number(quantityText);
+  const quantityValid = Number.isInteger(parsedQuantity) && parsedQuantity >= minQuantity && parsedQuantity <= maxQuantity;
+  const quantity = quantityValid ? parsedQuantity : minQuantity;
+  const total = service.priceBdt * quantity;
+  const shortBy = total - me.balance;
+  const quantityError =
+    errors.quantity ??
+    (quantityValid ? undefined : `Enter ${minQuantity === maxQuantity ? minQuantity : `${minQuantity}–${maxQuantity}`}`);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -72,7 +82,7 @@ function OrderForm({
     try {
       const result = await apiFetch<{ order: RentOrderDTO; balance: number; message: string }>("/api/me/orders", {
         method: "POST",
-        body: { serviceId: service.id, fields },
+        body: { serviceId: service.id, fields, quantity },
       });
       toast.success(result.message);
       onDone(result.balance);
@@ -88,7 +98,12 @@ function OrderForm({
       <dl className="grid grid-cols-2 gap-3 rounded-lg bg-admin-bg p-3 text-sm">
         <div>
           <dt className="text-admin-muted">Price</dt>
-          <dd className="text-lg font-semibold">{formatBdt(service.priceBdt)}</dd>
+          <dd className="text-lg font-semibold">{formatBdt(total)}</dd>
+          {quantity > 1 && (
+            <dd className="text-xs text-admin-muted">
+              {formatBdt(service.priceBdt)} × {quantity}
+            </dd>
+          )}
         </div>
         <div>
           <dt className="text-admin-muted">Your balance</dt>
@@ -99,6 +114,37 @@ function OrderForm({
       </dl>
 
       {service.info && <p className="text-sm whitespace-pre-line text-admin-muted">{service.info}</p>}
+
+      <div>
+        <label htmlFor="field-quantity" className="mb-1.5 block text-sm font-medium">
+          Quantity
+        </label>
+        <input
+          id="field-quantity"
+          type="number"
+          inputMode="numeric"
+          min={minQuantity}
+          max={maxQuantity}
+          step={1}
+          value={quantityText}
+          readOnly={minQuantity === maxQuantity}
+          aria-invalid={Boolean(quantityError)}
+          onChange={(event) => {
+            setQuantityText(event.target.value);
+            setErrors((current) => clearFieldError(current, "quantity"));
+          }}
+          className="admin-input"
+        />
+        {quantityError ? (
+          <p className="mt-1 text-xs text-status-offline">{quantityError}</p>
+        ) : (
+          minQuantity !== maxQuantity && (
+            <p className="mt-1 text-xs text-admin-muted">
+              {minQuantity}–{maxQuantity}
+            </p>
+          )
+        )}
+      </div>
 
       {service.customFields.map((field) => {
         const id = `field-${field.name}`;
@@ -157,9 +203,9 @@ function OrderForm({
         <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">
           Cancel
         </button>
-        <button type="submit" disabled={busy || shortBy > 0 || !ordersEnabled} className="admin-btn admin-btn-primary">
+        <button type="submit" disabled={busy || shortBy > 0 || !ordersEnabled || !quantityValid} className="admin-btn admin-btn-primary">
           <ShoppingCart aria-hidden className="size-4" />
-          {busy ? "Ordering…" : `Rent for ${formatBdt(service.priceBdt)}`}
+          {busy ? "Ordering…" : `Rent for ${formatBdt(total)}`}
         </button>
       </div>
     </form>

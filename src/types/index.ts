@@ -173,6 +173,8 @@ export interface PublicRentServiceDTO {
   info: string;
   priceBdt: number;
   customFields: RentCustomFieldDTO[];
+  minQuantity: number;
+  maxQuantity: number;
 }
 
 export interface ProviderDTO {
@@ -230,6 +232,7 @@ export interface CustomerDTO {
 export interface RentOrderDTO {
   id: string;
   serviceName: string;
+  quantity: number;
   priceBdt: number;
   fields: Record<string, string>;
   status: RentOrderStatus;
