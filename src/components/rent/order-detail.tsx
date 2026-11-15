@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { formatBdt, OrderResult, OrderStatusBadge } from "@/components/rent/shared";
+import { formatBdt, OrderResult } from "@/components/rent/shared";
 import { apiFetch, errorMessage } from "@/lib/client-api";
 import type { RentOrderDetailDTO, RentOrderStatus } from "@/types";
 
@@ -103,25 +103,69 @@ function buildSteps(order: RentOrderDetailDTO): Step[] {
   return steps;
 }
 
-function Section({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
+/** Card header: icon chip + bold title, with a gradient accent line underneath. */
+function CardHeader({ icon: Icon, title, as: Tag = "h2", action }: { icon: LucideIcon; title: string; as?: "h1" | "h2"; action?: ReactNode }) {
+  return (
+    <div className="relative flex items-center justify-between gap-3 px-5 py-4 sm:px-6">
+      <Tag className="flex items-center gap-3 font-display text-lg font-bold">
+        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/40">
+          <Icon aria-hidden className="size-4" />
+        </span>
+        <span className="bg-linear-to-r from-primary to-purple bg-clip-text text-transparent">{title}</span>
+      </Tag>
+      {action}
+      <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 bg-linear-to-r from-primary via-purple to-primary/10" />
+    </div>
+  );
+}
+
+function Section({ icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
   return (
     <section className="neon-card overflow-hidden p-0">
-      <h2 className="flex items-center gap-2.5 border-b border-line/30 px-5 py-3.5 font-display font-semibold">
-        <Icon aria-hidden className="size-4.5 text-primary" /> {title}
-      </h2>
-      <div className="p-5">{children}</div>
+      <CardHeader icon={icon} title={title} />
+      <div className="p-5 sm:p-6">{children}</div>
     </section>
   );
 }
 
 function Row({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[13rem_1fr] sm:items-center sm:gap-4">
-      <dt className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-muted uppercase">
-        <Icon aria-hidden className="size-3.5 text-primary" /> {label}
+    <div className="group relative grid grid-cols-1 gap-1.5 py-4 pl-3 transition-colors hover:bg-primary/5 sm:grid-cols-[14rem_1fr] sm:items-center sm:gap-4">
+      <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary opacity-0 transition-opacity group-hover:opacity-100" />
+      <dt className="inline-flex items-center gap-2.5 text-xs font-bold tracking-wider text-muted uppercase">
+        <Icon aria-hidden className="size-4 text-primary" /> {label}
       </dt>
-      <dd className="min-w-0 font-semibold wrap-break-word">{children}</dd>
+      <dd className="min-w-0 text-base font-bold wrap-break-word sm:text-lg">{children}</dd>
     </div>
+  );
+}
+
+const BIG_STATUS: Record<RentOrderStatus, { label: string; icon: LucideIcon; className: string }> = {
+  submitting: { label: "Confirming", icon: Clock, className: "border-status-maintenance text-status-maintenance bg-status-maintenance/10" },
+  pending: { label: "Pending", icon: Clock, className: "border-status-maintenance text-status-maintenance bg-status-maintenance/10" },
+  processing: { label: "Processing", icon: Loader, className: "border-cyan text-cyan bg-primary/10" },
+  completed: { label: "Completed", icon: Check, className: "border-status-online text-status-online bg-status-online/10" },
+  rejected: { label: "Rejected", icon: X, className: "border-status-offline text-status-offline bg-status-offline/10" },
+  failed: { label: "Rejected", icon: X, className: "border-status-offline text-status-offline bg-status-offline/10" },
+};
+
+/** Large outlined status pill, e.g. "⊗ REJECTED". */
+function StatusPill({ status, refunded }: { status: RentOrderStatus; refunded: boolean }) {
+  const { label, icon: Icon, className } = BIG_STATUS[status];
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className={`inline-flex items-center gap-2 rounded-xl border-2 px-4 py-1.5 text-sm font-extrabold tracking-wider uppercase ${className}`}>
+        <span className="flex size-4 items-center justify-center rounded-full bg-current">
+          <Icon aria-hidden className={`size-2.5 text-white ${status === "processing" ? "animate-spin" : ""}`} strokeWidth={3} />
+        </span>
+        {label}
+      </span>
+      {refunded && (
+        <span className="rounded-xl border-2 border-line/60 px-3 py-1.5 text-xs font-extrabold tracking-wider text-muted uppercase">
+          Refunded
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -163,7 +207,7 @@ export function OrderDetail({ id }: { id: string }) {
   }, [open, load]);
 
   const back = (
-    <Link href="/account" className="btn-outline min-h-9! px-3! text-sm">
+    <Link href="/account" className="btn-outline min-h-9! px-3! text-sm font-bold">
       <ArrowLeft aria-hidden className="size-4" /> Back
     </Link>
   );
@@ -192,16 +236,12 @@ export function OrderDetail({ id }: { id: string }) {
   const parameters = [...Object.entries(order.fields), ["Quantity", String(order.quantity)] as [string, string]];
 
   return (
-    <div className="space-y-5">
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="min-w-0 space-y-5">
       {/* Details */}
       <section className="neon-card overflow-hidden p-0">
-        <div className="flex items-center justify-between gap-3 border-b border-line/30 px-5 py-3.5">
-          <h1 className="flex items-center gap-2.5 font-display text-lg font-semibold">
-            <Info aria-hidden className="size-5 text-primary" /> Order details
-          </h1>
-          {back}
-        </div>
-        <dl className="divide-y divide-line/25 px-5">
+        <CardHeader icon={Info} title="Order Details" as="h1" action={back} />
+        <dl className="divide-y divide-line/25 px-3 sm:px-4">
           <Row icon={Package} label="Service name">
             {order.serviceName}
           </Row>
@@ -221,11 +261,11 @@ export function OrderDetail({ id }: { id: string }) {
             </span>
           </Row>
           <Row icon={CircleDollarSign} label="Amount">
-            <span className="text-lg text-status-online">{formatBdt(order.priceBdt)}</span>
-            {order.quantity > 1 && <span className="ml-2 text-xs font-normal text-muted">× {order.quantity}</span>}
+            <span className="text-xl font-extrabold text-status-online">{formatBdt(order.priceBdt)}</span>
+            {order.quantity > 1 && <span className="ml-2 text-sm font-bold text-muted">× {order.quantity}</span>}
           </Row>
           <Row icon={ListChecks} label="Order status">
-            <OrderStatusBadge status={order.status} refunded={order.refunded} customer />
+            <StatusPill status={order.status} refunded={order.refunded} />
           </Row>
         </dl>
       </section>
@@ -247,15 +287,17 @@ export function OrderDetail({ id }: { id: string }) {
         <ul className="grid gap-3 sm:grid-cols-2">
           {parameters.map(([name, value]) => (
             <li key={name} className="rounded-xl border border-line/40 bg-background/30 px-4 py-3">
-              <p className="text-xs font-semibold tracking-wide text-muted uppercase">{name}</p>
-              <p className="mt-1 font-semibold break-all">{value}</p>
+              <p className="text-xs font-bold tracking-wider text-muted uppercase">{name}</p>
+              <p className="mt-1 font-bold break-all">{value}</p>
             </li>
           ))}
         </ul>
       </Section>
+      </div>
 
       {/* Timeline */}
-      <Section icon={Workflow} title="Order status">
+      <div className="lg:sticky lg:top-24">
+      <Section icon={Workflow} title="Order Status">
         <ol className="relative">
           {steps.map((step, index) => {
             const last = index === steps.length - 1;
@@ -279,17 +321,17 @@ export function OrderDetail({ id }: { id: string }) {
                   />
                 )}
                 <span className={`flex size-9 shrink-0 items-center justify-center rounded-full shadow-lg ${tone}`}>
-                  <Icon aria-hidden className={`size-4 ${step.state === "current" ? "animate-spin" : ""}`} />
+                  <Icon aria-hidden className={`size-4 ${step.state === "current" ? "animate-spin" : ""}`} strokeWidth={2.75} />
                 </span>
                 <div className="min-w-0 pt-1">
                   <p
-                    className={`font-semibold ${
+                    className={`text-base font-bold ${
                       step.state === "failed" ? "text-status-offline" : step.state === "waiting" ? "text-muted" : "text-status-online"
                     }`}
                   >
                     {step.label}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs font-semibold text-muted">
                     {step.at ? SHORT_DATE_TIME.format(new Date(step.at)) : step.state === "current" ? "In progress…" : "Waiting"}
                   </p>
                   {step.note && (
@@ -303,6 +345,7 @@ export function OrderDetail({ id }: { id: string }) {
           })}
         </ol>
       </Section>
+      </div>
     </div>
   );
 }

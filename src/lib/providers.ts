@@ -42,6 +42,7 @@ export function toProviderDTO(doc: ProviderDoc, counts?: { services: number; ena
     enabled: doc.enabled,
     displayOrder: doc.displayOrder,
     useProxy: doc.useProxy ?? false,
+    currency: doc.currency ?? "USD",
     serviceCount: counts?.services ?? 0,
     enabledServiceCount: counts?.enabled ?? 0,
   };
@@ -113,6 +114,7 @@ export interface SyncResult {
  */
 export async function syncProvider(providerId: string): Promise<SyncResult> {
   const credentials = await getProviderCredentials(providerId);
+  const costCurrency = (await Provider.findById(providerId, { currency: 1 }).lean())?.currency ?? "USD";
   let services;
   try {
     services = await listProviderServices(credentials);
@@ -136,6 +138,7 @@ export async function syncProvider(providerId: string): Promise<SyncResult> {
             group: service.group,
             type: service.type,
             costUsd: service.costUsd,
+            costCurrency,
             deliveryTime: service.deliveryTime,
             info: service.info,
             customFields: service.customFields,

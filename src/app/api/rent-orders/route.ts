@@ -31,6 +31,7 @@ export const GET = adminRoute(async (request) => {
     serviceId: order.serviceId,
     providerName: names.get(String(order.provider)) ?? "Deleted provider",
     costUsd: order.costUsd,
+    costCurrency: order.costCurrency ?? "USD",
     providerOrderId: order.providerOrderId,
     adminNote: order.adminNote,
     checkError: order.checkError ?? "",

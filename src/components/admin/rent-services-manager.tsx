@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
+import { formatCost } from "@/lib/pricing";
 import { detectCategory } from "@/lib/rent-category";
 import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type AdminRentServiceDTO, type RentCategory, type RentConfigDTO } from "@/types";
 
@@ -65,7 +66,8 @@ function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: n
   return (
     <form onSubmit={save} noValidate className="admin-card space-y-3 p-4">
       <p className="text-sm text-admin-muted">
-        Auto price = cost in USD × {rate} (USD rate) + markup, rounded up to whole taka. The rate is set in{" "}
+        Auto price = cost + markup, rounded up to whole taka. USD providers&apos; costs are first multiplied by {rate} (USD rate);
+        BDT providers&apos; costs are used as-is. The rate is set in{" "}
         <Link href="/admin/settings" className="text-primary hover:underline">
           Settings
         </Link>
@@ -132,7 +134,7 @@ function ServiceForm({
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       <p className="text-sm text-admin-muted">
-        {service.providerName}: <span className="text-admin-text">{service.name}</span> · cost ${service.costUsd} · #{service.serviceId}
+        {service.providerName}: <span className="text-admin-text">{service.name}</span> · cost {formatCost(service.costUsd, service.costCurrency)} · #{service.serviceId}
       </p>
       <TextField
         label="Name on website"
@@ -372,7 +374,7 @@ export function RentServicesManager() {
                         <div className="text-right text-sm">
                           <p className="font-semibold">{formatBdt(service.effectivePriceBdt)}</p>
                           <p className="text-xs text-admin-muted">
-                            cost ${service.costUsd} · {service.priceBdt === null ? "auto" : "fixed"}
+                            cost {formatCost(service.costUsd, service.costCurrency)} ·{service.priceBdt === null ? "auto" : "fixed"}
                           </p>
                         </div>
                         <Toggle

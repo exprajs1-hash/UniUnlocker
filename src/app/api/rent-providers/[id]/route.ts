@@ -1,6 +1,7 @@
 import { adminRoute, ApiError, json, parseObjectId, readJson, type IdContext } from "@/lib/api";
 import { getProviderAccount, ProviderRejectedError, ProviderUnavailableError } from "@/lib/gsm-api";
 import { connectToDatabase } from "@/lib/mongodb";
+import { normalizeCurrency } from "@/lib/pricing";
 import { credentialsOf, toProviderDTO } from "@/lib/providers";
 import { encryptSecret } from "@/lib/secret-box";
 import { providerPatchSchema, providerSchema } from "@/lib/validations";
@@ -21,8 +22,9 @@ export const PUT = adminRoute<IdContext>(async (request, { params }) => {
   const key = data.key || credentialsOf(current).key;
   if (!key) throw new ApiError(422, "Enter the API key.", undefined, { key: "API key is required" });
 
+  let detected: string;
   try {
-    await getProviderAccount({ url: data.url, username: data.username, key, useProxy: data.useProxy });
+    ({ currency: detected } = await getProviderAccount({ url: data.url, username: data.username, key, useProxy: data.useProxy }));
   } catch (error) {
     if (error instanceof ProviderRejectedError || error instanceof ProviderUnavailableError) {
       throw new ApiError(422, `Not saved – the provider did not accept these details: ${error.message}`);
@@ -30,14 +32,26 @@ export const PUT = adminRoute<IdContext>(async (request, { params }) => {
     throw error;
   }
 
+  const currency = data.currency === "auto" ? normalizeCurrency(detected) : data.currency;
   const provider = await Provider.findByIdAndUpdate(
     id,
-    { $set: { name: data.name, url: data.url, username: data.username, apiKeyEncrypted: encryptSecret(key), useProxy: data.useProxy } },
+    {
+      $set: {
+        name: data.name,
+        url: data.url,
+        username: data.username,
+        apiKeyEncrypted: encryptSecret(key),
+        useProxy: data.useProxy,
+        currency,
+      },
+    },
     { returnDocument: "after" },
   )
     .select("+apiKeyEncrypted")
     .lean();
   if (!provider) throw NOT_FOUND;
+  // Synced costs are in the provider's currency, so relabel them now rather than waiting for the next sync.
+  await RentService.updateMany({ provider: id }, { $set: { costCurrency: currency } });
   return json({ provider: toProviderDTO(provider) });
 });
 

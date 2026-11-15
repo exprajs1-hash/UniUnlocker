@@ -1,5 +1,6 @@
 import { adminRoute, ApiError, json, readJson } from "@/lib/api";
 import { getProviderAccount, ProviderRejectedError, ProviderUnavailableError } from "@/lib/gsm-api";
+import { normalizeCurrency } from "@/lib/pricing";
 import { migrateLegacyProvider, toProviderDTO } from "@/lib/providers";
 import { encryptSecret } from "@/lib/secret-box";
 import { providerSchema } from "@/lib/validations";
@@ -24,8 +25,9 @@ export const POST = adminRoute(async (request) => {
   const data = providerSchema.parse(await readJson(request));
   if (!data.key) throw new ApiError(422, "Enter the API key.", undefined, { key: "API key is required" });
 
+  let detected: string;
   try {
-    await getProviderAccount({ url: data.url, username: data.username, key: data.key, useProxy: data.useProxy });
+    ({ currency: detected } = await getProviderAccount({ url: data.url, username: data.username, key: data.key, useProxy: data.useProxy }));
   } catch (error) {
     if (error instanceof ProviderRejectedError || error instanceof ProviderUnavailableError) {
       throw new ApiError(422, `Not saved – the provider did not accept these details: ${error.message}`);
@@ -41,6 +43,7 @@ export const POST = adminRoute(async (request) => {
     username: data.username,
     apiKeyEncrypted: encryptSecret(data.key),
     useProxy: data.useProxy,
+    currency: data.currency === "auto" ? normalizeCurrency(detected) : data.currency,
     displayOrder: count,
   });
   return json({ provider: toProviderDTO(provider.toObject()) }, 201);

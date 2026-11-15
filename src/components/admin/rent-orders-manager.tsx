@@ -4,6 +4,7 @@ import { Pencil, RefreshCw, Undo2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, SelectField, TextAreaField, TextField, Toggle } from "@/components/admin/form";
 import { formatBdt, ORDER_STATUS_LABELS, OrderResult, OrderStatusBadge } from "@/components/rent/shared";
+import { formatCost } from "@/lib/pricing";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
@@ -121,7 +122,7 @@ export function RentOrdersManager() {
                         <RelativeTime iso={order.createdAt} />
                       </p>
                       <p className="text-xs text-admin-muted">
-                        Charged {formatBdt(order.priceBdt)} · cost ${order.costUsd} · {order.providerName} service #{order.serviceId}
+                        Charged {formatBdt(order.priceBdt)} · cost {formatCost(order.costUsd, order.costCurrency)} ·{order.providerName} service #{order.serviceId}
                         {order.providerOrderId && ` · provider order #${order.providerOrderId}`}
                       </p>
                       {open && order.providerOrderId && (

@@ -57,10 +57,17 @@ export function toRentConfigDTO(pricing: Pricing): RentConfigDTO {
   return { markupPercent: pricing.markupPercent, ordersEnabled: pricing.ordersEnabled };
 }
 
-/** The admin's fixed price, or cost × rate + markup rounded up to whole taka. */
-export function effectivePrice(service: Pick<IRentService, "priceBdt" | "costUsd">, pricing: Pricing): number {
+/**
+ * The admin's fixed price, or cost + markup rounded up to whole taka. A USD cost
+ * is converted with the USD rate first; a BDT cost (BDT providers) is used as-is.
+ */
+export function effectivePrice(
+  service: Pick<IRentService, "priceBdt" | "costUsd"> & { costCurrency?: IRentService["costCurrency"] },
+  pricing: Pricing,
+): number {
   if (service.priceBdt !== null && service.priceBdt !== undefined) return service.priceBdt;
-  return Math.ceil(service.costUsd * pricing.rate * (1 + pricing.markupPercent / 100));
+  const rate = service.costCurrency === "BDT" ? 1 : pricing.rate;
+  return Math.ceil(service.costUsd * rate * (1 + pricing.markupPercent / 100));
 }
 
 type ServiceDoc = IRentService & { _id: unknown };
@@ -97,6 +104,7 @@ export function toAdminService(
     effectiveCategory: effectiveCategory(doc),
     provider: String(doc.provider),
     providerName: providerNames.get(String(doc.provider)) ?? "Deleted provider",
+    costCurrency: doc.costCurrency ?? "USD",
     effectivePriceBdt: effectivePrice(doc, pricing),
   };
 }
@@ -277,6 +285,7 @@ export async function placeOrder(
     quantity,
     priceBdt: price,
     costUsd: service.costUsd * quantity,
+    costCurrency: service.costCurrency ?? "USD",
     fields,
     status: "submitting",
     statusHistory: [{ status: "submitting", at: new Date() }],

@@ -2,7 +2,7 @@
 
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { TextField, Toggle } from "@/components/admin/form";
+import { SelectField, TextField, Toggle } from "@/components/admin/form";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
@@ -23,6 +23,7 @@ function ProviderForm({
     username: provider?.username ?? "",
     key: "",
     useProxy: provider?.useProxy ?? false,
+    currency: (provider?.currency ?? "auto") as "auto" | "USD" | "BDT",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -74,6 +75,21 @@ function ProviderForm({
         error={errors.key}
         required={!provider}
       />
+      <div>
+        <SelectField
+          label="Provider currency"
+          value={draft.currency}
+          onChange={(currency) => setDraft((current) => ({ ...current, currency }))}
+          options={[
+            { value: "auto", label: "Detect automatically" },
+            { value: "USD", label: "USD ($) – cost × USD rate" },
+            { value: "BDT", label: "BDT (৳) – cost used as-is" },
+          ]}
+        />
+        <p className="mt-1 text-xs text-admin-muted">
+          The currency this provider&apos;s prices are in. Pick BDT for taka panels so their prices are not multiplied by the USD rate.
+        </p>
+      </div>
       <div>
         <Toggle
           label="Connect through the fixed-IP proxy"
@@ -209,7 +225,7 @@ export function ProvidersPanel({ onServicesChanged }: { onServicesChanged: () =>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{provider.name}</p>
                 <p className="truncate text-xs text-admin-muted">
-                  {provider.url} · {provider.username} · key {provider.keyHint || "not set"}
+                  {provider.url} · {provider.username} · key {provider.keyHint || "not set"} · prices in {provider.currency}
                   {provider.useProxy ? " · via proxy" : ""}
                 </p>
                 <p className="text-xs text-admin-muted">

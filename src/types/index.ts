@@ -213,6 +213,8 @@ export interface ProviderDTO {
   displayOrder: number;
   /** API calls go through the fixed-IP proxy (PROVIDER_PROXY_URL). */
   useProxy: boolean;
+  /** Currency the provider charges in; BDT costs are used as-is, USD costs × the USD rate. */
+  currency: "USD" | "BDT";
   serviceCount: number;
   enabledServiceCount: number;
 }
@@ -235,7 +237,9 @@ export interface AdminRentServiceDTO {
   title: string;
   group: string;
   type: string;
+  /** Provider cost per unit, in `costCurrency` (the field name predates BDT providers). */
   costUsd: number;
+  costCurrency: "USD" | "BDT";
   priceBdt: number | null;
   /** The price customers pay now, fixed or calculated. */
   effectivePriceBdt: number;
@@ -309,6 +313,7 @@ export interface AdminRentOrderDTO extends RentOrderDTO {
   serviceId: number;
   providerName: string;
   costUsd: number;
+  costCurrency: "USD" | "BDT";
   providerOrderId: string;
   adminNote: string;
   /** Why the last automatic status check failed; empty when it worked. */

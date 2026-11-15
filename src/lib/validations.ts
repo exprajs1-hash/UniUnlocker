@@ -339,6 +339,8 @@ export const providerSchema = z.object({
   /** Required when adding; blank when editing keeps the saved key. */
   key: z.string().trim().max(500, "This key is too long").default(""),
   useProxy: z.boolean().default(false),
+  /** "auto" reads it from the provider's account info when saving. */
+  currency: z.enum(["auto", "USD", "BDT"]).default("auto"),
 });
 
 export const providerPatchSchema = z.object({ enabled: z.boolean() });

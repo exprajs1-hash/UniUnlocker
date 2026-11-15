@@ -20,8 +20,10 @@ export interface IRentService {
   title: string;
   group: string;
   type: string;
-  /** What the provider charges us, in USD. */
+  /** What the provider charges us, in `costCurrency` (the name predates BDT providers). */
   costUsd: number;
+  /** Copied from the provider: a BDT cost is not multiplied by the USD rate. */
+  costCurrency: "USD" | "BDT";
   /** Fixed selling price in BDT; null means "cost × rate + markup". */
   priceBdt: number | null;
   deliveryTime: string;
@@ -53,6 +55,7 @@ const RentServiceSchema = new Schema<IRentService>(
     group: { type: String, default: "", trim: true },
     type: { type: String, default: "" },
     costUsd: { type: Number, default: 0 },
+    costCurrency: { type: String, enum: ["USD", "BDT"], default: "USD" },
     priceBdt: { type: Number, default: null },
     deliveryTime: { type: String, default: "" },
     info: { type: String, default: "" },

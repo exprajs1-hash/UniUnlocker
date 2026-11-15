@@ -12,6 +12,8 @@ export interface IProvider {
   displayOrder: number;
   /** Route API calls through PROVIDER_PROXY_URL, for providers that only allow whitelisted IPs. */
   useProxy: boolean;
+  /** Currency the provider's credit and service costs are in. */
+  currency: "USD" | "BDT";
 }
 
 const ProviderSchema = new Schema<IProvider>(
@@ -23,6 +25,7 @@ const ProviderSchema = new Schema<IProvider>(
     enabled: { type: Boolean, default: true },
     displayOrder: { type: Number, default: 0 },
     useProxy: { type: Boolean, default: false },
+    currency: { type: String, enum: ["USD", "BDT"], default: "USD" },
   },
   { timestamps: true },
 );

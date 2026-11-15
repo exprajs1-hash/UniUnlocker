@@ -17,7 +17,7 @@ async function Detail({ params }: Pick<Props, "params">) {
 
 export default function OrderDetailPage({ params }: Props) {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-5 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-5 lg:px-8">
       <Suspense
         fallback={
           <div role="status" aria-label="Loading" className="space-y-4">

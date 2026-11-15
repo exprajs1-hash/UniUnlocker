@@ -11,7 +11,9 @@ export interface IRentOrder {
   quantity: number;
   /** Total charged: unit price × quantity. */
   priceBdt: number;
+  /** Provider cost, in `costCurrency`. */
   costUsd: number;
+  costCurrency: "USD" | "BDT";
   fields: Record<string, string>;
   status: RentOrderStatus;
   providerOrderId: string;
@@ -41,6 +43,7 @@ const RentOrderSchema = new Schema<IRentOrder>(
     quantity: { type: Number, default: 1 },
     priceBdt: { type: Number, required: true },
     costUsd: { type: Number, default: 0 },
+    costCurrency: { type: String, enum: ["USD", "BDT"], default: "USD" },
     fields: { type: Schema.Types.Mixed, default: {} },
     status: { type: String, enum: RENT_ORDER_STATUSES, default: "submitting", index: true },
     providerOrderId: { type: String, default: "" },
