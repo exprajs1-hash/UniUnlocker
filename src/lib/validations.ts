@@ -281,6 +281,7 @@ export const rentServicePatchSchema = z.object({
     .max(500, "This URL is too long")
     .refine((value) => !value || isUsableImageUrl(value), "Upload an image, or paste an image link starting with https://")
     .optional(),
+  category: z.enum(["", "rent", "imei", "server"]).optional(),
   priceBdt: z
     .preprocess(
       (value) => (typeof value === "string" ? (value.trim() === "" ? null : Number(value.trim())) : value),

@@ -10,6 +10,7 @@ import {
 import { connectToDatabase } from "@/lib/mongodb";
 import { getProviderCredentials } from "@/lib/providers";
 import { stripProviderContacts } from "@/lib/provider-text";
+import { effectiveCategory } from "@/lib/rent-category";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
 import { serialize } from "@/lib/serialize";
 import { BalanceTransaction } from "@/models/BalanceTransaction";
@@ -66,6 +67,7 @@ type ServiceDoc = IRentService & { _id: unknown };
 export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentServiceDTO {
   return {
     id: String(doc._id),
+    category: effectiveCategory(doc),
     code: doc.serviceId,
     icon: doc.icon ?? "",
     name: doc.title || doc.name,
@@ -90,6 +92,8 @@ export function toAdminService(
     lastOrder,
     description: doc.description ?? "",
     icon: doc.icon ?? "",
+    category: (doc.category ?? "") as AdminRentServiceDTO["category"],
+    effectiveCategory: effectiveCategory(doc),
     provider: String(doc.provider),
     providerName: providerNames.get(String(doc.provider)) ?? "Deleted provider",
     effectivePriceBdt: effectivePrice(doc, pricing),

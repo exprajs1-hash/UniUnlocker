@@ -3,7 +3,7 @@
 import { Pencil, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
-import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextAreaField, TextField, Toggle } from "@/components/admin/form";
+import { AdminEmpty, ListSkeleton, LoadError, PageHeader, SelectField, TextAreaField, TextField, Toggle } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/image-field";
 import { ProvidersPanel } from "@/components/admin/providers-panel";
 import { formatBdt, ToolIcon } from "@/components/rent/shared";
@@ -11,10 +11,11 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
-import type { AdminRentServiceDTO, RentConfigDTO } from "@/types";
+import { detectCategory } from "@/lib/rent-category";
+import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type AdminRentServiceDTO, type RentCategory, type RentConfigDTO } from "@/types";
 
 type Data = { services: AdminRentServiceDTO[]; config: RentConfigDTO; rate: number };
-type Show = "enabled" | "rent" | "all" | "problems";
+type Show = "enabled" | "rent" | "imei" | "server" | "all" | "problems";
 
 const failedLastOrder = (service: AdminRentServiceDTO) =>
   service.lastOrder !== null && ["rejected", "failed"].includes(service.lastOrder.status);
@@ -102,6 +103,8 @@ function ServiceForm({
   const [title, setTitle] = useState(service.title);
   const [description, setDescription] = useState(service.description);
   const [icon, setIcon] = useState(service.icon ?? "");
+  const [category, setCategory] = useState<RentCategory | "">(service.category ?? "");
+  const detected = detectCategory(service.type, service.name);
   const [price, setPrice] = useState(service.priceBdt === null ? "" : String(service.priceBdt));
   const [order, setOrder] = useState(String(service.displayOrder));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -115,7 +118,7 @@ function ServiceForm({
     try {
       const result = await apiFetch<{ service: AdminRentServiceDTO }>(`/api/rent-services/${service.id}`, {
         method: "PATCH",
-        body: { title, description, icon, priceBdt: price, displayOrder: order },
+        body: { title, description, icon, category, priceBdt: price, displayOrder: order },
       });
       toast.success("Service updated.");
       onSaved(result.service);
@@ -138,6 +141,21 @@ function ServiceForm({
         onChange={setTitle}
         error={errors.title}
       />
+      <div>
+        <SelectField<RentCategory | "">
+          label="Section on website"
+          value={category}
+          onChange={setCategory}
+          error={errors.category}
+          options={[
+            { value: "", label: `Auto (${RENT_CATEGORY_LABELS[detected]})` },
+            ...RENT_CATEGORIES.map((value) => ({ value, label: RENT_CATEGORY_LABELS[value] })),
+          ]}
+        />
+        <p className="mt-1 text-xs text-admin-muted">
+          Which tab customers find it under on the Tools Rent page. Provider type: {service.type || "unknown"}.
+        </p>
+      </div>
       <ImageField
         label="Tool icon"
         value={icon}
@@ -190,6 +208,7 @@ export function RentServicesManager() {
       if (providerFilter && service.provider !== providerFilter) return false;
       if (show === "enabled" && !service.enabled) return false;
       if (show === "rent" && !service.enabled && !isRent(service)) return false;
+      if ((show === "imei" || show === "server") && service.effectiveCategory !== show) return false;
       if (show === "problems" && !failedLastOrder(service) && service.availableOnProvider) return false;
       if (!needle) return true;
       return `${service.name} ${service.title} ${service.group} ${service.serviceId} ${service.providerName}`.toLowerCase().includes(needle);
@@ -226,6 +245,8 @@ export function RentServicesManager() {
   }
 
   const enabledCount = services?.filter((service) => service.enabled).length ?? 0;
+  const categoryCounts = { rent: 0, imei: 0, server: 0 };
+  for (const service of services ?? []) categoryCounts[service.effectiveCategory] += 1;
   const problemCount = services?.filter((service) => failedLastOrder(service) || !service.availableOnProvider).length ?? 0;
 
   return (
@@ -299,6 +320,8 @@ export function RentServicesManager() {
                     className="admin-input"
                   >
                     <option value="rent">Rent / remote services</option>
+                    <option value="imei">IMEI services ({categoryCounts.imei})</option>
+                    <option value="server">Server services ({categoryCounts.server})</option>
                     <option value="enabled">Shown on website ({enabledCount})</option>
                     <option value="all">All services ({data.services.length})</option>
                     <option value="problems">Problem services ({problemCount})</option>
@@ -321,6 +344,9 @@ export function RentServicesManager() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">
                           {service.title || service.name}
+                          <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
+                            {RENT_CATEGORY_LABELS[service.effectiveCategory]}
+                          </span>
                           {service.availableOnProvider ? (
                             <span className="ml-2 rounded bg-status-online/15 px-1.5 py-0.5 text-xs text-status-online">Available</span>
                           ) : (

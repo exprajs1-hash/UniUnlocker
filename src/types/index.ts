@@ -166,8 +166,18 @@ export interface RentCustomFieldDTO {
 }
 
 /** What visitors see: the selling price only, never the provider cost. */
+/** Sections of the public rent page. */
+export const RENT_CATEGORIES = ["rent", "imei", "server"] as const;
+export type RentCategory = (typeof RENT_CATEGORIES)[number];
+export const RENT_CATEGORY_LABELS: Record<RentCategory, string> = {
+  rent: "Tools Rent",
+  imei: "IMEI Service",
+  server: "Server Service",
+};
+
 export interface PublicRentServiceDTO {
   id: string;
+  category: RentCategory;
   /** The provider's service number, shown as "ID #1234". */
   code: number;
   icon: string;
@@ -224,6 +234,10 @@ export interface AdminRentServiceDTO {
   /** Admin-written text shown on the website. */
   description: string;
   icon: string;
+  /** The admin's pick; "" means automatic. */
+  category: RentCategory | "";
+  /** Where it shows on the website now (the pick, or the detected category). */
+  effectiveCategory: RentCategory;
   customFields: RentCustomFieldDTO[];
   enabled: boolean;
   availableOnProvider: boolean;

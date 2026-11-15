@@ -1,11 +1,27 @@
 "use client";
 
-import { ArrowRight, Clock, Headphones, LayoutGrid, List, LogIn, RotateCcw, Search, Sparkles, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  Clock,
+  Headphones,
+  KeyRound,
+  LayoutGrid,
+  List,
+  LogIn,
+  RotateCcw,
+  Search,
+  Server,
+  Smartphone,
+  Sparkles,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatBdt, ToolIcon } from "@/components/rent/shared";
 import { apiFetch, ApiClientError, errorMessage } from "@/lib/client-api";
-import type { PublicRentServiceDTO } from "@/types";
+import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type PublicRentServiceDTO, type RentCategory } from "@/types";
+
+const CATEGORY_ICONS: Record<RentCategory, typeof KeyRound> = { rent: KeyRound, imei: Smartphone, server: Server };
 
 interface Me {
   name: string;
@@ -46,16 +62,19 @@ export function RentCatalog() {
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("");
   const [view, setView] = useState<View>("list");
+  const [category, setCategory] = useState<RentCategory>("rent");
 
   useEffect(() => {
     let active = true;
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
+    if (RENT_CATEGORIES.includes(tab as RentCategory)) setCategory(tab as RentCategory);
     apiFetch<{ services: PublicRentServiceDTO[] }>("/api/rent/services")
       .then((data) => active && setServices(data.services))
       .catch((error: unknown) => active && setLoadError(error instanceof ApiClientError ? error.message : errorMessage(error)));
     void fetchMe().then((value) => active && setMe(value));
     try {
       const saved = localStorage.getItem(VIEW_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring a per-viewer preference after mount
       if (saved === "grid" || saved === "list") setView(saved);
     } catch {
       // Storage can be blocked; the default view is fine.
@@ -74,22 +93,68 @@ export function RentCatalog() {
     }
   }
 
-  const groups = useMemo(() => [...new Set((services ?? []).map((service) => service.group).filter(Boolean))].sort(), [services]);
+  // A tab shows only once the admin has enabled at least one service in it.
+  const categories = useMemo(
+    () => RENT_CATEGORIES.filter((value) => (services ?? []).some((service) => service.category === value)),
+    [services],
+  );
+  const activeCategory: RentCategory | null = categories.includes(category) ? category : (categories[0] ?? null);
+  const inCategory = useMemo(
+    () => (services ?? []).filter((service) => service.category === activeCategory),
+    [services, activeCategory],
+  );
+
+  const groups = useMemo(() => [...new Set(inCategory.map((service) => service.group).filter(Boolean))].sort(), [inCategory]);
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return (services ?? []).filter(
+    return inCategory.filter(
       (service) =>
         (!group || service.group === group) &&
         (!needle || service.name.toLowerCase().includes(needle) || String(service.code).includes(needle)),
     );
-  }, [services, query, group]);
+  }, [inCategory, query, group]);
+
+  function changeCategory(next: RentCategory) {
+    setCategory(next);
+    setGroup("");
+    // Keep the tab in the URL so it can be shared/bookmarked, without a navigation.
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", next);
+    window.history.replaceState(null, "", url);
+  }
 
   return (
     <div>
+      {/* Sections */}
+      {categories.length > 1 && (
+        <div role="tablist" aria-label="Service type" className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-line/50 p-1">
+          {categories.map((value) => {
+            const Icon = CATEGORY_ICONS[value];
+            const selected = value === activeCategory;
+            const count = (services ?? []).filter((service) => service.category === value).length;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => changeCategory(value)}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition ${
+                  selected ? "bg-primary text-white shadow-lg shadow-primary/30" : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Icon aria-hidden className="size-4" /> {RENT_CATEGORY_LABELS[value]}
+                <span className={`rounded-full px-1.5 text-xs ${selected ? "bg-white/20" : "bg-white/5"}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Summary */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         {[
-          { icon: Sparkles, value: services ? String(services.length) : "—", label: "Services" },
+          { icon: Sparkles, value: services ? String(inCategory.length) : "—", label: "Services" },
           { icon: Headphones, value: "24/7", label: "Support" },
           { icon: Clock, value: "Fast", label: "Delivery" },
         ].map(({ icon: Icon, value, label }) => (
@@ -187,7 +252,7 @@ export function RentCatalog() {
         </p>
       ) : view === "list" ? (
         <div className="neon-card overflow-x-auto p-0">
-          <table className="w-full min-w-[40rem] text-sm">
+          <table className="w-full min-w-160 text-sm">
             <thead>
               <tr className="border-b border-line/40 text-left text-xs tracking-wide text-muted uppercase">
                 <th scope="col" className="px-4 py-3 font-semibold">
