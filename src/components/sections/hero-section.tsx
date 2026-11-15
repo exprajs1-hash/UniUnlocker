@@ -35,7 +35,7 @@ export async function HeroSection() {
           )}
           <div className="mt-8 flex flex-wrap gap-4">
             <VideoButton url={settings.heroVideoUrl} contactHref={contactLink(settings)} />
-            <Link href="/rent" className="btn-outline">
+            <Link href="/services" className="btn-outline">
               <Wrench aria-hidden className="size-5" /> Our Services
             </Link>
           </div>

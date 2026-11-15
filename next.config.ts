@@ -32,7 +32,12 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   async redirects() {
-    return [{ source: "/admin", destination: "/admin/dashboard", permanent: false }];
+    return [
+      { source: "/admin", destination: "/admin/dashboard", permanent: false },
+      // The catalog moved from /rent to /services; keep old links and search results working.
+      { source: "/rent", destination: "/services", permanent: true },
+      { source: "/rent/:id", destination: "/services/:id", permanent: true },
+    ];
   },
 };
 

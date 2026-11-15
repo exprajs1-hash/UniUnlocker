@@ -169,7 +169,7 @@ function UtilityMenu({ links }: { links: UtilityLink[] }) {
 function ToolRentBadge({ onClick }: { onClick?: () => void }) {
   return (
     <Link
-      href="/rent"
+      href="/services"
       onClick={onClick}
       className="relative inline-flex items-center gap-2 rounded-full bg-linear-to-r from-cyan via-primary to-purple p-px shadow-[0_0_18px_rgb(121_44_255/0.45)] transition hover:shadow-[0_0_26px_rgb(0_229_255/0.6)]"
     >
@@ -260,7 +260,7 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
           ))}
           {/* The Services (rent) badge only fits from xl; below that it is a plain link. */}
           <li className="xl:hidden">
-            <Link href="/rent" aria-current={pathname === "/rent" ? "page" : undefined} className={linkClass("rent")}>
+            <Link href="/services" aria-current={pathname === "/services" ? "page" : undefined} className={linkClass("rent")}>
               Rent
             </Link>
           </li>

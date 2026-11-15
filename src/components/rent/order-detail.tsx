@@ -304,15 +304,14 @@ export function OrderDetail({ id }: { id: string }) {
             const Icon = step.icon;
             const waiting = step.state === "waiting";
             const active = !waiting && (last || step.state === "current");
-            // Icon fill and the row's soft highlight.
-            const tone =
+            const iconTone =
               step.state === "failed"
-                ? { icon: "bg-linear-to-br from-status-offline to-status-offline/80", row: "from-status-offline/10" }
+                ? "bg-linear-to-br from-status-offline to-status-offline/80"
                 : waiting
-                  ? { icon: "border border-line/60 bg-background/40 text-muted", row: "" }
+                  ? "border border-line/60 bg-background/40 text-muted"
                   : active
-                    ? { icon: "bg-linear-to-br from-primary to-purple", row: "from-primary/10" }
-                    : { icon: "bg-linear-to-br from-status-online to-status-online/80", row: "from-status-online/10" };
+                    ? "bg-linear-to-br from-primary to-purple"
+                    : "bg-linear-to-br from-status-online to-status-online/80";
             return (
               <li key={step.label} className="relative flex gap-4 pb-5 last:pb-0">
                 {!last && (
@@ -325,12 +324,10 @@ export function OrderDetail({ id }: { id: string }) {
                     }`}
                   />
                 )}
-                <span className={`flex size-9 shrink-0 items-center justify-center rounded-full text-white ${tone.icon}`}>
+                <span className={`flex size-9 shrink-0 items-center justify-center rounded-full text-white ${iconTone}`}>
                   <Icon aria-hidden className={`size-4 ${step.state === "current" ? "animate-spin" : ""}`} strokeWidth={2.75} />
                 </span>
-                <div
-                  className={`min-w-0 flex-1 rounded-xl px-3 py-1.5 ${tone.row ? `bg-linear-to-r ${tone.row} to-transparent` : ""}`}
-                >
+                <div className="min-w-0 flex-1 pt-0.5">
                   <p
                     className={`text-base font-bold ${
                       step.state === "failed" ? "text-status-offline" : waiting ? "text-muted" : "text-status-online"

@@ -231,7 +231,7 @@ export function RentCatalog() {
             <Wallet aria-hidden className="size-4" /> {formatBdt(me.balance)}
           </Link>
         ) : (
-          <Link href="/login?next=%2Frent" className="btn-outline ml-auto min-h-11! shrink-0 px-3! text-sm sm:px-4!">
+          <Link href="/login?next=%2Fservices" className="btn-outline ml-auto min-h-11! shrink-0 px-3! text-sm sm:px-4!">
             <LogIn aria-hidden className="size-4" /> Sign in
           </Link>
         )}
@@ -278,7 +278,7 @@ export function RentCatalog() {
           <ul className="neon-card divide-y divide-line/25 p-0 md:hidden">
             {visible.map((service) => (
               <li key={service.id}>
-                <Link href={`/rent/${service.id}`} className="flex items-center gap-3 p-3 transition hover:bg-primary/5">
+                <Link href={`/services/${service.id}`} className="flex items-center gap-3 p-3 transition hover:bg-primary/5">
                   <ToolIcon src={service.icon} name={service.name} size={40} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm leading-snug font-semibold">{service.name}</p>
@@ -329,7 +329,7 @@ export function RentCatalog() {
                       <ToolIcon src={service.icon} name={service.name} size={36} />
                     </td>
                     <td className="px-2 py-3">
-                      <Link href={`/rent/${service.id}`} className="font-semibold hover:text-cyan">
+                      <Link href={`/services/${service.id}`} className="font-semibold hover:text-cyan">
                         {service.name}
                       </Link>
                       <p className="text-xs text-muted">ID: #{service.code}</p>
@@ -342,7 +342,7 @@ export function RentCatalog() {
                     </td>
                     <td className="px-2 py-3 text-right font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</td>
                     <td className="px-4 py-3 text-right">
-                      <Link href={`/rent/${service.id}`} className="btn-neon min-h-9! px-3! text-xs">
+                      <Link href={`/services/${service.id}`} className="btn-neon min-h-9! px-3! text-xs">
                         View <ArrowRight aria-hidden className="size-3.5" />
                       </Link>
                     </td>
@@ -374,7 +374,7 @@ export function RentCatalog() {
               </div>
               <div className="mt-4 flex items-center justify-between gap-3">
                 <span className="text-2xl font-bold text-neon">{formatBdt(service.priceBdt)}</span>
-                <Link href={`/rent/${service.id}`} className="btn-neon min-h-10! px-4! text-sm">
+                <Link href={`/services/${service.id}`} className="btn-neon min-h-10! px-4! text-sm">
                   View <ArrowRight aria-hidden className="size-4" />
                 </Link>
               </div>

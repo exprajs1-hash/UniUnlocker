@@ -269,7 +269,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
     } finally {
       // A full load, so no signed-in page stays in the router cache.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/rent";
+      window.location.href = "/services";
     }
   }
 
@@ -382,7 +382,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
           <button type="button" onClick={() => void load()} disabled={loading} className="btn-outline min-h-10! px-4! text-sm">
             <RefreshCw aria-hidden className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
           </button>
-          <Link href="/rent" className="btn-neon min-h-10! px-4! text-sm">
+          <Link href="/services" className="btn-neon min-h-10! px-4! text-sm">
             <ShoppingCart aria-hidden className="size-4" /> Rent a tool
           </Link>
           <button
