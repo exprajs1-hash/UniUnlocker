@@ -69,6 +69,48 @@ const HERO: Record<RentCategory, { highlight: string; subtitle: string }> = {
   },
 };
 
+const TYPE_MS = 85;
+
+/**
+ * Types `text` out letter by letter with a blinking cursor, restarting when it
+ * changes. Screen readers get the full text at once; reduced-motion shows it whole.
+ */
+function Typewriter({ text, className = "" }: { text: string; className?: string }) {
+  const [shown, setShown] = useState(text.length);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- show the whole word without animating
+      setShown(text.length);
+      return;
+    }
+    setShown(0);
+    const timer = setInterval(() => {
+      setShown((count) => {
+        if (count >= text.length) {
+          clearInterval(timer);
+          return count;
+        }
+        return count + 1;
+      });
+    }, TYPE_MS);
+    return () => clearInterval(timer);
+  }, [text]);
+
+  return (
+    <span className="whitespace-nowrap">
+      <span className="sr-only">{text}</span>
+      <span aria-hidden className={className}>
+        {text.slice(0, shown)}
+      </span>
+      <span
+        aria-hidden
+        className="ml-0.5 inline-block h-[0.9em] w-0.75 translate-y-[0.1em] rounded-full bg-cyan motion-safe:animate-[caret-blink_1s_step-end_infinite]"
+      />
+    </span>
+  );
+}
+
 function ServicesHero({ category, count }: { category: RentCategory; count: number | null }) {
   const { highlight, subtitle } = HERO[category];
   const Icon = CATEGORY_ICONS[category];
@@ -89,13 +131,19 @@ function ServicesHero({ category, count }: { category: RentCategory; count: numb
           <Icon aria-hidden className="size-3.5" />
           {count === null ? "Premium services" : `${count}${count >= 10 ? "+" : ""} Premium Services Available`}
         </span>
-        <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl">
-          Premium <span className="text-gradient-flow">{highlight}</span> Services
+        <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl lg:text-[56px]">
+          Premium <Typewriter text={highlight} className="text-gradient-flow" /> Services
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-muted sm:text-base">{subtitle}</p>
+        <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-muted motion-safe:animate-[hero-in_0.6s_ease-out_0.25s_both] sm:text-base">
+          {subtitle}
+        </p>
         <ul className="mt-6 flex flex-wrap justify-center gap-3">
-          {stats.map(({ value, label }) => (
-            <li key={label} className="min-w-24 rounded-xl border border-line/40 bg-background/50 px-4 py-2.5 backdrop-blur-sm">
+          {stats.map(({ value, label }, index) => (
+            <li
+              key={label}
+              style={{ animationDelay: `${0.35 + index * 0.12}s` }}
+              className="min-w-24 rounded-xl border border-line/40 bg-background/50 px-4 py-2.5 backdrop-blur-sm motion-safe:animate-[hero-pop_0.5s_ease-out_both]"
+            >
               <p className="font-display text-2xl font-extrabold text-primary tabular-nums">{value}</p>
               <p className="text-[11px] font-bold tracking-wider text-muted uppercase">{label}</p>
             </li>
