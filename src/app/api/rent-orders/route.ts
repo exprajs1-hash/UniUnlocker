@@ -33,6 +33,10 @@ export const GET = adminRoute(async (request) => {
     costUsd: order.costUsd,
     providerOrderId: order.providerOrderId,
     adminNote: order.adminNote,
+    checkError: order.checkError ?? "",
+    providerStatus: order.providerStatus ?? "",
+    lastCheckedAt: order.lastCheckedAt ? new Date(order.lastCheckedAt).toISOString() : null,
+    manualAt: order.manualAt ? new Date(order.manualAt).toISOString() : null,
     customer: customer ? { id: String(customer._id), name: customer.name, email: customer.email } : null,
   }));
   return json({ orders: dto, total, page, pageSize: PAGE_SIZE });

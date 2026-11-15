@@ -20,6 +20,12 @@ export interface IRentOrder {
   adminNote: string;
   refunded: boolean;
   lastCheckedAt: Date | null;
+  /** Why the last automatic status check failed; empty when it worked. */
+  checkError: string;
+  /** The status value the provider last sent, as-is (e.g. "4"). */
+  providerStatus: string;
+  /** Set when the admin changed the status or result by hand. */
+  manualAt: Date | null;
   createdAt: Date;
 }
 
@@ -40,6 +46,9 @@ const RentOrderSchema = new Schema<IRentOrder>(
     adminNote: { type: String, default: "" },
     refunded: { type: Boolean, default: false },
     lastCheckedAt: { type: Date, default: null },
+    checkError: { type: String, default: "" },
+    providerStatus: { type: String, default: "" },
+    manualAt: { type: Date, default: null },
   },
   { timestamps: true, minimize: false },
 );

@@ -275,8 +275,19 @@ export interface AdminRentOrderDTO extends RentOrderDTO {
   costUsd: number;
   providerOrderId: string;
   adminNote: string;
+  /** Why the last automatic status check failed; empty when it worked. */
+  checkError: string;
+  /** The status value the provider last sent, as-is. */
+  providerStatus: string;
+  lastCheckedAt: string | null;
+  /** When the admin last changed the status or result by hand. */
+  manualAt: string | null;
   customer: { id: string; name: string; email: string } | null;
 }
+
+/** Statuses the admin can set by hand. */
+export const MANUAL_ORDER_STATUSES = ["pending", "processing", "completed", "rejected", "failed"] as const;
+export type ManualOrderStatus = (typeof MANUAL_ORDER_STATUSES)[number];
 
 export interface BalanceTransactionDTO {
   id: string;

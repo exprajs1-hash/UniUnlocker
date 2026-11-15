@@ -39,7 +39,16 @@ function escapeXml(value: string): string {
   return value.replace(/[<>&'"]/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-type ProviderReply = { SUCCESS?: Record<string, unknown>[]; ERROR?: { MESSAGE?: unknown }[] };
+type ProviderReply = { SUCCESS?: unknown; ERROR?: unknown; ID?: unknown };
+
+/** DHRU panels differ: SUCCESS/ERROR may be an array, an object keyed "0", or the record itself. */
+function firstRecord(value: unknown): Record<string, unknown> | null {
+  if (Array.isArray(value)) return value[0] && typeof value[0] === "object" ? (value[0] as Record<string, unknown>) : null;
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (record["0"] && typeof record["0"] === "object") return record["0"] as Record<string, unknown>;
+  return Object.keys(record).length > 0 ? record : null;
+}
 
 function errorText(message: unknown): string {
   if (typeof message === "string") return message;
@@ -73,9 +82,15 @@ async function call(
     throw new ProviderUnavailableError(`Could not reach the rent provider: ${(error as Error).message}`);
   }
 
-  if (reply.ERROR?.length) throw new ProviderRejectedError(errorText(reply.ERROR[0]?.MESSAGE));
-  const success = reply.SUCCESS?.[0];
-  if (!success) throw new ProviderUnavailableError("The rent provider sent an unexpected reply.");
+  const error = firstRecord(reply?.ERROR);
+  if (error) throw new ProviderRejectedError(errorText(error.MESSAGE ?? error.message));
+  const success = firstRecord(reply?.SUCCESS);
+  if (!success) {
+    const preview = JSON.stringify(reply ?? null).slice(0, 200);
+    throw new ProviderUnavailableError(`The rent provider sent an unexpected reply: ${preview}`);
+  }
+  // Some panels put ID next to SUCCESS rather than inside it.
+  if (success.ID === undefined && reply.ID !== undefined) return { ...success, ID: reply.ID };
   return success;
 }
 
@@ -225,6 +240,8 @@ export interface ProviderOrderStatus {
   state: ProviderOrderState;
   /** The delivered result (login, code, message), as plain text. */
   result: string;
+  /** The status value exactly as the provider sent it, shown to the admin. */
+  raw: string;
 }
 
 /** Strips the HTML the provider sometimes puts in results, keeping line breaks. */
@@ -243,19 +260,38 @@ export function providerTextToPlain(value: unknown): string {
     .trim();
 }
 
+/** Case-insensitive field lookup, since panels disagree on STATUS vs status. */
+function pick(record: Record<string, unknown>, ...names: string[]): unknown {
+  for (const name of names) {
+    const key = Object.keys(record).find((candidate) => candidate.toLowerCase() === name.toLowerCase());
+    if (key !== undefined && record[key] !== undefined && record[key] !== null && record[key] !== "") return record[key];
+  }
+  return undefined;
+}
+
+/** A result may arrive as text/HTML or as an object such as { username, password }. */
+function resultText(value: unknown): string {
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => (Array.isArray(value) ? providerTextToPlain(item) : `${key}: ${providerTextToPlain(item)}`))
+      .join("\n");
+  }
+  return providerTextToPlain(value);
+}
+
+/** Maps a provider status (DHRU code or a word some panels send) to ours. Unknown values stay pending. */
+export function parseProviderState(raw: string): ProviderOrderState {
+  const value = raw.trim().toLowerCase();
+  if (value === "4" || /^(success|completed?|done|delivered)$/.test(value)) return "completed";
+  if (value === "3" || /^(reject(ed)?|cancell?ed|refunded|failed)$/.test(value)) return "rejected";
+  if (value === "1" || /^(in ?process|processing|in progress)$/.test(value)) return "processing";
+  return "pending";
+}
+
 /** DHRU status codes: 0 new, 1 in process, 3 rejected, 4 completed. */
 export async function getProviderOrder(credentials: ProviderCredentials, referenceId: string): Promise<ProviderOrderStatus> {
   const result = await call(credentials, "getimeiorder", `<PARAMETERS><ID>${escapeXml(referenceId)}</ID></PARAMETERS>`);
-  const status = String(result.STATUS ?? "");
-  const code = providerTextToPlain(result.CODE);
-  switch (status) {
-    case "4":
-      return { state: "completed", result: code };
-    case "3":
-      return { state: "rejected", result: code };
-    case "1":
-      return { state: "processing", result: code };
-    default:
-      return { state: "pending", result: code };
-  }
+  const raw = String(pick(result, "STATUS", "ORDERSTATUS") ?? "");
+  const code = resultText(pick(result, "CODE", "RESULT", "COMMENTS"));
+  return { state: parseProviderState(raw), result: code, raw };
 }
