@@ -11,7 +11,6 @@ import type { UtilityLink } from "@/types";
 
 const LINKS = [
   { id: "home", label: "Home" },
-  { id: "services", label: "Services" },
   { id: "servers", label: "Servers" },
   { id: "tools", label: "Tools" },
 ];
@@ -179,7 +178,7 @@ function ToolRentBadge({ onClick }: { onClick?: () => void }) {
           <span className="absolute inline-flex size-full rounded-full bg-cyan opacity-75 motion-safe:animate-ping" />
           <span className="relative inline-flex size-2 rounded-full bg-cyan" />
         </span>
-        Tools Rent
+        Services
       </span>
     </Link>
   );
@@ -259,7 +258,7 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
               </Link>
             </li>
           ))}
-          {/* The Tools Rent badge only fits from xl; below that it is a plain link. */}
+          {/* The Services (rent) badge only fits from xl; below that it is a plain link. */}
           <li className="xl:hidden">
             <Link href="/rent" aria-current={pathname === "/rent" ? "page" : undefined} className={linkClass("rent")}>
               Rent

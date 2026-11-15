@@ -3,6 +3,7 @@
 import {
   ExternalLink,
   FolderKanban,
+  GalleryHorizontal,
   Hammer,
   Handshake,
   Info,
@@ -36,6 +37,7 @@ const NAV = [
   { href: "/admin/rent-services", label: "Rent services", icon: Package },
   { href: "/admin/rent-orders", label: "Rent orders", icon: ShoppingCart },
   { href: "/admin/customers", label: "Customers", icon: Users },
+  { href: "/admin/banners", label: "Banners", icon: GalleryHorizontal },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
   { href: "/admin/about", label: "About", icon: Info },
   { href: "/admin/messages", label: "Messages", icon: Mail },

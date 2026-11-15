@@ -27,7 +27,7 @@ async function ServiceResults({ searchParams }: Pick<Props, "searchParams">) {
 export default function ServicesPage({ searchParams }: Props) {
   return (
     <ListingPage
-      backHref="/#services"
+      backHref="/"
       lead="All"
       highlight="Services"
       subtitle="Professional services for all your mobile software needs"

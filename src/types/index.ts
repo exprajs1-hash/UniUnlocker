@@ -36,6 +36,17 @@ export interface ServiceDTO {
   enabled: boolean;
 }
 
+export interface BannerDTO {
+  id: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  url: string;
+  buttonLabel: string;
+  displayOrder: number;
+  enabled: boolean;
+}
+
 export interface PartnerDTO {
   id: string;
   name: string;

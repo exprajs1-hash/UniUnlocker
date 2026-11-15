@@ -8,13 +8,14 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { withConvertedPrices } from "@/lib/pricing";
 import { serialize, serializeMany } from "@/lib/serialize";
 import { About } from "@/models/About";
+import { Banner } from "@/models/Banner";
 import { Partner } from "@/models/Partner";
 import { Project } from "@/models/Project";
 import { Server } from "@/models/Server";
 import { Service } from "@/models/Service";
 import { Tool } from "@/models/Tool";
 import { WebsiteSettings } from "@/models/WebsiteSettings";
-import type { AboutDTO, PartnerDTO, ProjectDTO, ServerDTO, ServiceDTO, ToolDTO, WebsiteSettingsDTO } from "@/types";
+import type { AboutDTO, BannerDTO, PartnerDTO, ProjectDTO, ServerDTO, ServiceDTO, ToolDTO, WebsiteSettingsDTO } from "@/types";
 
 /**
  * Public read layer. Each read is cached with `use cache` and tagged (see
@@ -89,6 +90,16 @@ async function cachedPartners(): Promise<PartnerDTO[]> {
   );
 }
 
+async function cachedBanners(): Promise<BannerDTO[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CACHE_TAGS.banners);
+  await connectToDatabase();
+  return serializeMany<BannerDTO>(
+    await Banner.find({ enabled: true }).sort({ displayOrder: 1, createdAt: 1 }).lean(),
+  );
+}
+
 async function cachedTools(): Promise<ToolDTO[]> {
   "use cache";
   cacheLife("hours");
@@ -147,6 +158,8 @@ export const getAbout = cache(() => readOrFallback("about", cachedAbout, DEFAULT
 export const getEnabledServices = cache(() => readOrFallback<ServiceDTO[]>("services", cachedServices, []));
 
 export const getEnabledPartners = cache(() => readOrFallback<PartnerDTO[]>("partners", cachedPartners, []));
+
+export const getEnabledBanners = cache(() => readOrFallback<BannerDTO[]>("banners", cachedBanners, []));
 
 export const getEnabledTools = cache(() => readOrFallback<ToolDTO[]>("tools", cachedTools, []));
 

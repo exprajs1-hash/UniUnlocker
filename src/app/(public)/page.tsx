@@ -5,7 +5,7 @@ import { HeroSection } from "@/components/sections/hero-section";
 import { PartnersSection } from "@/components/sections/partners-section";
 import { PortfolioSection } from "@/components/sections/portfolio-section";
 import { ServerStatusSection } from "@/components/sections/server-status-section";
-import { ServicesSection } from "@/components/sections/services-section";
+import { BannerSection } from "@/components/sections/banner-section";
 import { ToolsSection } from "@/components/sections/tools-section";
 import { CardGridSkeleton, HeroSkeleton, SplitSkeleton } from "@/components/ui/skeleton";
 import { getSettings } from "@/lib/data";
@@ -35,8 +35,8 @@ export default function HomePage() {
       <Suspense fallback={<HeroSkeleton />}>
         <HeroSection />
       </Suspense>
-      <Suspense fallback={<CardGridSkeleton count={5} columns="sm:grid-cols-2 lg:grid-cols-5" />}>
-        <ServicesSection />
+      <Suspense>
+        <BannerSection />
       </Suspense>
       <Suspense fallback={<SplitSkeleton />}>
         <AboutSection />

@@ -61,7 +61,7 @@ export function RentServiceDetail({ id }: { id: string }) {
       <div className="neon-card p-8 text-center">
         <p className="text-muted">{loadError}</p>
         <Link href="/rent" className="btn-outline mt-4 inline-flex min-h-10! px-4! text-sm">
-          <ArrowLeft aria-hidden className="size-4" /> Back to Tools Rent
+          <ArrowLeft aria-hidden className="size-4" /> Back to Services
         </Link>
       </div>
     );
@@ -89,7 +89,7 @@ export function RentServiceDetail({ id }: { id: string }) {
               href="/rent"
               className="inline-flex items-center gap-1.5 rounded-full border border-glass/20 bg-glass/5 px-3 py-1.5 text-xs font-medium hover:bg-glass/10"
             >
-              <ArrowLeft aria-hidden className="size-3.5" /> Back to Tools Rent
+              <ArrowLeft aria-hidden className="size-3.5" /> Back to Services
             </Link>
             <div className="flex gap-2">
               <Chip className="bg-status-online/15 text-status-online">

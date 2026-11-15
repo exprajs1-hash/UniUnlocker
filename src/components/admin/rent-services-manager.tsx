@@ -153,7 +153,7 @@ function ServiceForm({
           ]}
         />
         <p className="mt-1 text-xs text-admin-muted">
-          Which tab customers find it under on the Tools Rent page. Provider type: {service.type || "unknown"}.
+          Which tab customers find it under on the Services (/rent) page. Provider type: {service.type || "unknown"}.
         </p>
       </div>
       <ImageField

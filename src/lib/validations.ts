@@ -126,6 +126,18 @@ export const partnerSchema = z.object({
 
 export const partnerPatchSchema = z.object({ enabled: z.boolean() }).partial();
 
+export const bannerSchema = z.object({
+  image: imageUrl.refine((value) => value.length > 0, "Add a banner image"),
+  title: optionalText(120),
+  subtitle: optionalText(240),
+  url: optionalUrl,
+  buttonLabel: optionalText(40),
+  displayOrder,
+  enabled: z.boolean().default(true),
+});
+
+export const bannerPatchSchema = z.object({ enabled: z.boolean() }).partial();
+
 export const toolSchema = partnerSchema;
 
 export const toolPatchSchema = partnerPatchSchema;
