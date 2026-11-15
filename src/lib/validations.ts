@@ -270,6 +270,28 @@ export const customerRegisterSchema = z
 
 export const customerLoginSchema = loginSchema;
 
+const customerEmail = z.string().trim().toLowerCase().max(200).pipe(z.email("Enter a valid email address"));
+const otpCode = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, "Enter the 6-digit code from the email");
+
+export const verifyEmailSchema = z.object({ email: customerEmail, code: otpCode });
+
+export const forgotPasswordSchema = z.object({ email: customerEmail });
+
+export const resetPasswordSchema = z
+  .object({
+    email: customerEmail,
+    code: otpCode,
+    password: customerPassword,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    error: "Passwords do not match",
+  });
+
 export const balanceAdjustSchema = z.object({
   amount: z.coerce
     .number({ error: "Enter an amount" })

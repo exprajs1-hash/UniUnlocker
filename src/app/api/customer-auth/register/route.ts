@@ -1,14 +1,19 @@
 import bcrypt from "bcryptjs";
 import { ApiError, assertSameOrigin, json, readJson, route } from "@/lib/api";
-import { setCustomerSession } from "@/lib/customer-auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { sendOtp } from "@/lib/otp";
 import { clientIp, consumeRateLimit } from "@/lib/rate-limit";
 import { customerRegisterSchema } from "@/lib/validations";
 import { Customer } from "@/models/Customer";
 
-const MAX_SIGNUPS_PER_IP = 5;
+const MAX_SIGNUPS_PER_IP = 10;
 const WINDOW_SECONDS = 60 * 60;
 
+/**
+ * Step 1 of sign-up: checks the details and emails a 6-digit code. The account
+ * is only created by /register/verify once the code is confirmed. Calling this
+ * again (after the cooldown) sends a new code.
+ */
 export const POST = route(async (request) => {
   assertSameOrigin(request);
   const { name, email, phone, password } = customerRegisterSchema.parse(await readJson(request));
@@ -26,7 +31,6 @@ export const POST = route(async (request) => {
       email: "This email is already registered. Try signing in.",
     });
   }
-  const customer = await Customer.create({ name, email, phone, passwordHash: await bcrypt.hash(password, 12) });
-  await setCustomerSession(String(customer._id), customer.tokenVersion);
-  return json({ ok: true }, 201);
+  await sendOtp(email, "register", { name, phone, passwordHash: await bcrypt.hash(password, 12) });
+  return json({ otpSent: true, email });
 });

@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   poweredByHeader: false,
   // Loaded as regular Node modules on the server rather than being bundled.
-  serverExternalPackages: ["mongoose", "cloudinary"],
+  serverExternalPackages: ["mongoose", "cloudinary", "nodemailer"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.pexels.com", pathname: "/**" },
