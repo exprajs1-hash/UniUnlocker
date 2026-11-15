@@ -21,7 +21,11 @@ import { formatBdt, ToolIcon } from "@/components/rent/shared";
 import { apiFetch, ApiClientError, errorMessage } from "@/lib/client-api";
 import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type PublicRentServiceDTO, type RentCategory } from "@/types";
 
-const CATEGORY_ICONS: Record<RentCategory, typeof KeyRound> = { rent: KeyRound, imei: Smartphone, server: Server };
+const CATEGORY_ICONS: Record<RentCategory, typeof KeyRound> = {
+  rent: KeyRound,
+  imei: Smartphone,
+  server: Server,
+};
 
 interface Me {
   name: string;
@@ -67,8 +71,10 @@ export function RentCatalog() {
   useEffect(() => {
     let active = true;
     const tab = new URLSearchParams(window.location.search).get("tab");
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
-    if (RENT_CATEGORIES.includes(tab as RentCategory)) setCategory(tab as RentCategory);
+    if (RENT_CATEGORIES.includes(tab as RentCategory)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
+      setCategory(tab as RentCategory);
+    }
     apiFetch<{ services: PublicRentServiceDTO[] }>("/api/rent/services")
       .then((data) => active && setServices(data.services))
       .catch((error: unknown) => active && setLoadError(error instanceof ApiClientError ? error.message : errorMessage(error)));
@@ -124,7 +130,11 @@ export function RentCatalog() {
     <div>
       {/* Sections */}
       {services !== null && (
-        <div role="tablist" aria-label="Service type" className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-line/50 p-1">
+        <div
+          role="tablist"
+          aria-label="Service type"
+          className="mb-6 grid grid-cols-3 gap-1 rounded-2xl border border-line/50 p-1"
+        >
           {categories.map((value) => {
             const Icon = CATEGORY_ICONS[value];
             const selected = value === activeCategory;
@@ -136,12 +146,17 @@ export function RentCatalog() {
                 role="tab"
                 aria-selected={selected}
                 onClick={() => changeCategory(value)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-semibold transition sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm ${
                   selected ? "bg-primary text-white shadow-lg shadow-primary/30" : "text-muted hover:text-foreground"
                 }`}
               >
-                <Icon aria-hidden className="size-4" /> {RENT_CATEGORY_LABELS[value]}
-                <span className={`rounded-full px-1.5 text-xs ${selected ? "bg-white/20" : "bg-white/5"}`}>{count}</span>
+                <Icon aria-hidden className="size-4 shrink-0" />
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate">{RENT_CATEGORY_LABELS[value]}</span>
+                  <span className={`rounded-full px-1.5 text-[0.65rem] sm:text-xs ${selected ? "bg-white/20" : "bg-white/5"}`}>
+                    {count}
+                  </span>
+                </span>
               </button>
             );
           })}
@@ -151,11 +166,18 @@ export function RentCatalog() {
       {/* Summary */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         {[
-          { icon: Sparkles, value: services ? String(inCategory.length) : "—", label: "Services" },
+          {
+            icon: Sparkles,
+            value: services ? String(inCategory.length) : "—",
+            label: "Services",
+          },
           { icon: Headphones, value: "24/7", label: "Support" },
           { icon: Clock, value: "Fast", label: "Delivery" },
         ].map(({ icon: Icon, value, label }) => (
-          <div key={label} className="neon-card flex flex-col items-center gap-1 p-3 text-center sm:flex-row sm:gap-3 sm:p-4 sm:text-left">
+          <div
+            key={label}
+            className="neon-card flex flex-col items-center gap-1 p-3 text-center sm:flex-row sm:gap-3 sm:p-4 sm:text-left"
+          >
             <Icon aria-hidden className="size-5 text-cyan" />
             <div>
               <p className="font-display text-lg font-bold sm:text-xl">{value}</p>
@@ -166,8 +188,8 @@ export function RentCatalog() {
       </div>
 
       {/* Search + filters */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex-1">
+      <div className="mb-3 flex items-center gap-2 sm:gap-3">
+        <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search services</span>
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
           <input
@@ -184,21 +206,13 @@ export function RentCatalog() {
             setQuery("");
             setGroup("");
           }}
-          className="btn-outline min-h-11! shrink-0 px-4! text-sm"
+          aria-label="Reset search and filters"
+          className="btn-outline min-h-11! shrink-0 px-3! text-sm sm:px-4!"
         >
-          <RotateCcw aria-hidden className="size-4" /> Reset
+          <RotateCcw aria-hidden className="size-4" /> <span className="hidden sm:inline">Reset</span>
         </button>
-        {me ? (
-          <Link href="/account" className="btn-outline min-h-11! shrink-0 px-4! text-sm">
-            <Wallet aria-hidden className="size-4" /> {formatBdt(me.balance)}
-          </Link>
-        ) : (
-          <Link href="/login?next=%2Frent" className="btn-outline min-h-11! shrink-0 px-4! text-sm">
-            <LogIn aria-hidden className="size-4" /> Sign in
-          </Link>
-        )}
       </div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex items-center gap-2 sm:gap-3">
         {groups.length > 1 && (
           <label className="min-w-0 flex-1 sm:max-w-64 sm:flex-none">
             <span className="sr-only">Filter by category</span>
@@ -212,7 +226,16 @@ export function RentCatalog() {
             </select>
           </label>
         )}
-        <div role="group" aria-label="Layout" className="ml-auto flex gap-1 rounded-xl border border-line/50 p-1">
+        {me ? (
+          <Link href="/account" className="btn-outline ml-auto min-h-11! shrink-0 px-3! text-sm sm:px-4!">
+            <Wallet aria-hidden className="size-4" /> {formatBdt(me.balance)}
+          </Link>
+        ) : (
+          <Link href="/login?next=%2Frent" className="btn-outline ml-auto min-h-11! shrink-0 px-3! text-sm sm:px-4!">
+            <LogIn aria-hidden className="size-4" /> Sign in
+          </Link>
+        )}
+        <div role="group" aria-label="Layout" className="flex shrink-0 gap-1 rounded-xl border border-line/50 p-1">
           {(
             [
               { value: "list", icon: List, label: "List view" },
@@ -250,59 +273,85 @@ export function RentCatalog() {
             : "No services match your search."}
         </p>
       ) : view === "list" ? (
-        <div className="neon-card overflow-x-auto p-0">
-          <table className="w-full min-w-160 text-sm">
-            <thead>
-              <tr className="border-b border-line/40 text-left text-xs tracking-wide text-muted uppercase">
-                <th scope="col" className="px-4 py-3 font-semibold">
-                  ID
-                </th>
-                <th scope="col" className="px-2 py-3 font-semibold">
-                  Service name
-                </th>
-                <th scope="col" className="px-2 py-3 font-semibold">
-                  Delivery
-                </th>
-                <th scope="col" className="px-2 py-3 text-center font-semibold">
-                  Min qty
-                </th>
-                <th scope="col" className="px-2 py-3 text-right font-semibold">
-                  Price
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-semibold">
-                  <span className="sr-only">Action</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/25">
-              {visible.map((service) => (
-                <tr key={service.id} className="transition hover:bg-primary/5">
-                  <td className="px-4 py-3">
-                    <ToolIcon src={service.icon} name={service.name} size={36} />
-                  </td>
-                  <td className="px-2 py-3">
-                    <Link href={`/rent/${service.id}`} className="font-semibold hover:text-cyan">
-                      {service.name}
-                    </Link>
-                    <p className="text-xs text-muted">ID: #{service.code}</p>
-                  </td>
-                  <td className="px-2 py-3">
-                    <DeliveryBadge text={service.deliveryTime} />
-                  </td>
-                  <td className="px-2 py-3 text-center">
-                    <MinQtyBadge value={service.minQuantity} />
-                  </td>
-                  <td className="px-2 py-3 text-right font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/rent/${service.id}`} className="btn-neon min-h-9! px-3! text-xs">
-                      View <ArrowRight aria-hidden className="size-3.5" />
-                    </Link>
-                  </td>
+        <>
+          {/* Phones: compact rows instead of a table that would scroll sideways. */}
+          <ul className="neon-card divide-y divide-line/25 p-0 md:hidden">
+            {visible.map((service) => (
+              <li key={service.id}>
+                <Link href={`/rent/${service.id}`} className="flex items-center gap-3 p-3 transition hover:bg-primary/5">
+                  <ToolIcon src={service.icon} name={service.name} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm leading-snug font-semibold">{service.name}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-muted">#{service.code}</span>
+                      <DeliveryBadge text={service.deliveryTime} />
+                      {service.minQuantity > 1 && <MinQtyBadge value={service.minQuantity} />}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</span>
+                    <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-cyan">
+                      View <ArrowRight aria-hidden className="size-3" />
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="neon-card hidden overflow-x-auto p-0 md:block">
+            <table className="w-full min-w-160 text-sm">
+              <thead>
+                <tr className="border-b border-line/40 text-left text-xs tracking-wide text-muted uppercase">
+                  <th scope="col" className="px-4 py-3 font-semibold">
+                    ID
+                  </th>
+                  <th scope="col" className="px-2 py-3 font-semibold">
+                    Service name
+                  </th>
+                  <th scope="col" className="px-2 py-3 font-semibold">
+                    Delivery
+                  </th>
+                  <th scope="col" className="px-2 py-3 text-center font-semibold">
+                    Min qty
+                  </th>
+                  <th scope="col" className="px-2 py-3 text-right font-semibold">
+                    Price
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold">
+                    <span className="sr-only">Action</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-line/25">
+                {visible.map((service) => (
+                  <tr key={service.id} className="transition hover:bg-primary/5">
+                    <td className="px-4 py-3">
+                      <ToolIcon src={service.icon} name={service.name} size={36} />
+                    </td>
+                    <td className="px-2 py-3">
+                      <Link href={`/rent/${service.id}`} className="font-semibold hover:text-cyan">
+                        {service.name}
+                      </Link>
+                      <p className="text-xs text-muted">ID: #{service.code}</p>
+                    </td>
+                    <td className="px-2 py-3">
+                      <DeliveryBadge text={service.deliveryTime} />
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <MinQtyBadge value={service.minQuantity} />
+                    </td>
+                    <td className="px-2 py-3 text-right font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link href={`/rent/${service.id}`} className="btn-neon min-h-9! px-3! text-xs">
+                        View <ArrowRight aria-hidden className="size-3.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((service) => (
@@ -310,7 +359,9 @@ export function RentCatalog() {
               <div className="flex items-start gap-3">
                 <ToolIcon src={service.icon} name={service.name} size={48} />
                 <div className="min-w-0">
-                  {service.group && <p className="truncate text-xs font-semibold tracking-wide text-cyan uppercase">{service.group}</p>}
+                  {service.group && (
+                    <p className="truncate text-xs font-semibold tracking-wide text-cyan uppercase">{service.group}</p>
+                  )}
                   <h2 className="font-display font-semibold">{service.name}</h2>
                   <p className="text-xs text-muted">ID: #{service.code}</p>
                 </div>

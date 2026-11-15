@@ -19,13 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import {
-  formatBdt,
-  formatSignedBdt,
-  OrderResult,
-  OrderStatusBadge,
-  TRANSACTION_LABELS,
-} from "@/components/rent/shared";
+import { formatBdt, formatSignedBdt, OrderResult, OrderStatusBadge, TRANSACTION_LABELS } from "@/components/rent/shared";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
@@ -75,11 +69,19 @@ function LiveDate() {
     <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
       <span className="inline-flex items-center gap-1.5">
         <CalendarDays aria-hidden className="size-3.5" />
-        {date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        {date.toLocaleDateString(undefined, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
       </span>
       <span className="inline-flex items-center gap-1.5">
         <Clock aria-hidden className="size-3.5" />
-        {date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+        {date.toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
       </span>
     </p>
   );
@@ -93,9 +95,18 @@ const TONES: Record<Tone, { border: string; tile: string }> = {
   primary: { border: "border-l-primary", tile: "bg-primary/20 text-primary" },
   purple: { border: "border-l-purple", tile: "bg-purple/20 text-purple" },
   cyan: { border: "border-l-cyan", tile: "bg-cyan/15 text-cyan" },
-  online: { border: "border-l-status-online", tile: "bg-status-online/15 text-status-online" },
-  offline: { border: "border-l-status-offline", tile: "bg-status-offline/15 text-status-offline" },
-  maintenance: { border: "border-l-status-maintenance", tile: "bg-status-maintenance/15 text-status-maintenance" },
+  online: {
+    border: "border-l-status-online",
+    tile: "bg-status-online/15 text-status-online",
+  },
+  offline: {
+    border: "border-l-status-offline",
+    tile: "bg-status-offline/15 text-status-offline",
+  },
+  maintenance: {
+    border: "border-l-status-maintenance",
+    tile: "bg-status-maintenance/15 text-status-maintenance",
+  },
 };
 
 function StatCard({
@@ -134,15 +145,15 @@ function StatCard({
 function OrderCard({ order }: { order: RentOrderDTO }) {
   return (
     <li className="neon-card p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-muted">
             Order <span className="font-semibold text-foreground">#{order.id.slice(-6).toUpperCase()}</span> ·{" "}
             <RelativeTime iso={order.createdAt} />
           </p>
-          <h3 className="mt-0.5 font-semibold">{order.serviceName}</h3>
+          <h3 className="mt-0.5 font-semibold wrap-break-word">{order.serviceName}</h3>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="font-semibold text-cyan tabular-nums">
             {formatBdt(order.priceBdt)}
             {order.quantity > 1 && <span className="text-xs font-normal text-muted"> · qty {order.quantity}</span>}
@@ -155,7 +166,7 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
           {Object.entries(order.fields).map(([name, value]) => (
             <div key={name}>
               <dt className="inline">{name}: </dt>
-              <dd className="inline text-foreground">{value}</dd>
+              <dd className="inline break-all text-foreground">{value}</dd>
             </div>
           ))}
         </dl>
@@ -185,25 +196,35 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
   const toast = useToast();
 
   /** `silent` is for the automatic refresh: no spinner flicker or error toast every few seconds. */
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const [meData, orderData, txData] = await Promise.all([
-        apiFetch<{ customer: Me }>("/api/me"),
-        apiFetch<{ orders: RentOrderDTO[]; stats: RentOrderStatsDTO }>("/api/me/orders"),
-        apiFetch<{ transactions: BalanceTransactionDTO[]; totalAddedBdt: number; depositCount: number }>("/api/me/transactions"),
-      ]);
-      setMe(meData.customer);
-      setOrders(orderData.orders);
-      setStats(orderData.stats);
-      setTransactions(txData.transactions);
-      setWallet({ totalAddedBdt: txData.totalAddedBdt, depositCount: txData.depositCount });
-    } catch (error) {
-      if (!silent) toast.error(errorMessage(error));
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [toast]);
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const [meData, orderData, txData] = await Promise.all([
+          apiFetch<{ customer: Me }>("/api/me"),
+          apiFetch<{ orders: RentOrderDTO[]; stats: RentOrderStatsDTO }>("/api/me/orders"),
+          apiFetch<{
+            transactions: BalanceTransactionDTO[];
+            totalAddedBdt: number;
+            depositCount: number;
+          }>("/api/me/transactions"),
+        ]);
+        setMe(meData.customer);
+        setOrders(orderData.orders);
+        setStats(orderData.stats);
+        setTransactions(txData.transactions);
+        setWallet({
+          totalAddedBdt: txData.totalAddedBdt,
+          depositCount: txData.depositCount,
+        });
+      } catch (error) {
+        if (!silent) toast.error(errorMessage(error));
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [toast],
+  );
 
   useEffect(() => {
     // Data comes from the API after mount, so this page needs no server session read.
@@ -251,14 +272,25 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
     );
   }
 
-  const s = stats ?? { total: 0, pending: 0, processing: 0, completed: 0, cancelled: 0, lockedBdt: 0, spentBdt: 0 };
+  const s = stats ?? {
+    total: 0,
+    pending: 0,
+    processing: 0,
+    completed: 0,
+    cancelled: 0,
+    lockedBdt: 0,
+    spentBdt: 0,
+  };
   const visibleOrders = orders ? (showAll ? orders : orders.slice(0, RECENT_COUNT)) : [];
 
   return (
     <div className="space-y-6">
       {/* Welcome */}
       <section className="neon-card overflow-hidden p-5 sm:p-6">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/25 via-purple/15 to-cyan/10" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/25 via-purple/15 to-cyan/10"
+        />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-purple font-display text-xl font-bold text-white shadow-lg shadow-primary/30">
@@ -314,7 +346,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
       </section>
 
       {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div role="tablist" aria-label="Account" className="flex gap-1 rounded-full border border-line/50 p-1">
           {(["orders", "wallet"] as const).map((key) => (
             <button
@@ -323,7 +355,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+              className={`flex-1 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition sm:flex-none ${
                 tab === key ? "bg-primary text-white" : "text-muted hover:text-foreground"
               }`}
             >
@@ -331,19 +363,22 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading} className="btn-outline min-h-10! px-4! text-sm">
-          <RefreshCw aria-hidden className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </button>
-        <Link href="/rent" className="btn-neon min-h-10! px-4! text-sm">
-          <ShoppingCart aria-hidden className="size-4" /> Rent a tool
-        </Link>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
-        >
-          <LogOut aria-hidden className="size-4" /> Sign out
-        </button>
+        <div className="flex items-center gap-2 sm:flex-1">
+          <button type="button" onClick={() => void load()} disabled={loading} className="btn-outline min-h-10! px-4! text-sm">
+            <RefreshCw aria-hidden className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+          <Link href="/rent" className="btn-neon min-h-10! px-4! text-sm">
+            <ShoppingCart aria-hidden className="size-4" /> Rent a tool
+          </Link>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            aria-label="Sign out"
+            className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
+          >
+            <LogOut aria-hidden className="size-4" /> <span className="hidden sm:inline">Sign out</span>
+          </button>
+        </div>
       </div>
 
       {/* Orders / wallet */}
@@ -389,7 +424,8 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
             </div>
             <div className="rounded-xl border border-line/60 bg-background/40 px-4 py-2 text-right">
               <p className="text-xs text-muted">
-                Total added{wallet.depositCount > 0 && ` · ${wallet.depositCount} time${wallet.depositCount === 1 ? "" : "s"}`}
+                Total added
+                {wallet.depositCount > 0 && ` · ${wallet.depositCount} time${wallet.depositCount === 1 ? "" : "s"}`}
               </p>
               <p className="text-lg font-bold text-status-online tabular-nums">{formatBdt(wallet.totalAddedBdt)}</p>
             </div>
