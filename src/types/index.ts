@@ -168,6 +168,9 @@ export interface RentCustomFieldDTO {
 /** What visitors see: the selling price only, never the provider cost. */
 export interface PublicRentServiceDTO {
   id: string;
+  /** The provider's service number, shown as "ID #1234". */
+  code: number;
+  icon: string;
   name: string;
   group: string;
   deliveryTime: string;
@@ -220,6 +223,7 @@ export interface AdminRentServiceDTO {
   info: string;
   /** Admin-written text shown on the website. */
   description: string;
+  icon: string;
   customFields: RentCustomFieldDTO[];
   enabled: boolean;
   availableOnProvider: boolean;

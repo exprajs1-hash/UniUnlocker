@@ -1,8 +1,27 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Wrench } from "lucide-react";
 import { useState } from "react";
+import { SafeImage } from "@/components/ui/safe-image";
+import { isUsableImageUrl } from "@/lib/images";
+import { parseResultLines } from "@/lib/provider-text";
 import type { BalanceTransactionType, RentOrderStatus } from "@/types";
+
+/** The admin's tool icon, or a wrench on a gradient tile when none is set. */
+export function ToolIcon({ src, name, size = 40 }: { src: string; name: string; size?: number }) {
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-primary to-purple text-white shadow-md shadow-primary/30"
+    >
+      {src && isUsableImageUrl(src) ? (
+        <SafeImage src={src} alt={`${name} icon`} fill sizes={`${size}px`} className="bg-white object-contain p-0.5" />
+      ) : (
+        <Wrench aria-hidden style={{ width: size * 0.45, height: size * 0.45 }} />
+      )}
+    </span>
+  );
+}
 
 const BDT = new Intl.NumberFormat("en-BD", { maximumFractionDigits: 0 });
 
@@ -44,14 +63,12 @@ export const TRANSACTION_LABELS: Record<BalanceTransactionType, string> = {
   refund: "Refund",
 };
 
-/** The delivered login/code, kept as plain text with a copy button. */
-export function OrderResult({ text }: { text: string }) {
+function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
-  if (!text) return null;
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(value);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -60,17 +77,47 @@ export function OrderResult({ text }: { text: string }) {
   }
 
   return (
-    <div className="relative mt-2 rounded-lg border border-white/10 bg-black/30 p-3 pr-11">
-      <pre className="font-mono text-sm break-words whitespace-pre-wrap">{text}</pre>
-      <button
-        type="button"
-        onClick={() => void copy()}
-        aria-label={copied ? "Copied" : "Copy"}
-        title={copied ? "Copied" : "Copy"}
-        className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-md hover:bg-white/10"
-      >
-        {copied ? <Check aria-hidden className="size-4 text-status-online" /> : <Copy aria-hidden className="size-4" />}
-      </button>
+    <button
+      type="button"
+      onClick={() => void copy()}
+      aria-label={copied ? "Copied" : label}
+      title={copied ? "Copied" : label}
+      className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-white/10"
+    >
+      {copied ? <Check aria-hidden className="size-4 text-status-online" /> : <Copy aria-hidden className="size-4" />}
+    </button>
+  );
+}
+
+/**
+ * The delivered login/code. Each line has its own copy button that copies only
+ * the value (not "Username:"); the top button copies all values, one per line.
+ */
+export function OrderResult({ text }: { text: string }) {
+  if (!text) return null;
+  const lines = parseResultLines(text);
+  const labelled = lines.some((line) => line.label !== null);
+
+  return (
+    <div className="mt-2 rounded-lg border border-white/10 bg-black/30 p-2">
+      {lines.length > 1 && labelled && (
+        <div className="flex justify-end border-b border-white/10 pb-1">
+          <span className="inline-flex items-center gap-1 text-xs opacity-70">
+            Copy all values <CopyButton value={lines.map((line) => line.value).join("\n")} label="Copy all values" />
+          </span>
+        </div>
+      )}
+      <ul className="font-mono text-sm">
+        {lines.map((line, index) => (
+          <li key={index} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-white/5">
+            <span className="min-w-0 flex-1 wrap-break-word">
+              {line.label !== null && <span className="opacity-60">{line.label}: </span>}
+              <span className="select-all">{line.value}</span>
+            </span>
+            <CopyButton value={line.value} label={line.label ? `Copy ${line.label}` : "Copy"} />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

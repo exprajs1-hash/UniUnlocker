@@ -11,6 +11,21 @@ const PHONE = /\+\s*\d(?:[\s\-().]*\d){7,}/g;
 const DIGITS = /\d(?:[\s\-().]*\d){7,}/;
 const CONTACT_WORDS = /\b(any ?help|help|whats ?app|wa\.me|telegram|contact|call|support|viber|imo)\b/i;
 
+export type ResultLine = { label: string | null; value: string };
+
+/** "Username: abc" → label "Username", value "abc". Lines without a short label (or URLs) stay whole. */
+export function parseResultLines(text: string): ResultLine[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = /^([^:\n]{1,40}?)\s*:\s*(.+)$/.exec(line);
+      if (!match || match[2].startsWith("//")) return { label: null, value: line };
+      return { label: match[1].trim(), value: match[2].trim() };
+    });
+}
+
 export function stripProviderContacts(text: string): string {
   return text
     .split("\n")

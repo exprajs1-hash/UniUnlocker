@@ -66,6 +66,8 @@ type ServiceDoc = IRentService & { _id: unknown };
 export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentServiceDTO {
   return {
     id: String(doc._id),
+    code: doc.serviceId,
+    icon: doc.icon ?? "",
     name: doc.title || doc.name,
     group: doc.group,
     deliveryTime: doc.deliveryTime,
@@ -87,6 +89,7 @@ export function toAdminService(
     ...serialize<AdminRentServiceDTO>(doc),
     lastOrder,
     description: doc.description ?? "",
+    icon: doc.icon ?? "",
     provider: String(doc.provider),
     providerName: providerNames.get(String(doc.provider)) ?? "Deleted provider",
     effectivePriceBdt: effectivePrice(doc, pricing),

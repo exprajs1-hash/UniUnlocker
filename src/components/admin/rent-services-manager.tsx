@@ -4,8 +4,9 @@ import { Pencil, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextAreaField, TextField, Toggle } from "@/components/admin/form";
+import { ImageField } from "@/components/admin/image-field";
 import { ProvidersPanel } from "@/components/admin/providers-panel";
-import { formatBdt } from "@/components/rent/shared";
+import { formatBdt, ToolIcon } from "@/components/rent/shared";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
@@ -100,6 +101,7 @@ function ServiceForm({
 }) {
   const [title, setTitle] = useState(service.title);
   const [description, setDescription] = useState(service.description);
+  const [icon, setIcon] = useState(service.icon ?? "");
   const [price, setPrice] = useState(service.priceBdt === null ? "" : String(service.priceBdt));
   const [order, setOrder] = useState(String(service.displayOrder));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -113,7 +115,7 @@ function ServiceForm({
     try {
       const result = await apiFetch<{ service: AdminRentServiceDTO }>(`/api/rent-services/${service.id}`, {
         method: "PATCH",
-        body: { title, description, priceBdt: price, displayOrder: order },
+        body: { title, description, icon, priceBdt: price, displayOrder: order },
       });
       toast.success("Service updated.");
       onSaved(result.service);
@@ -135,6 +137,13 @@ function ServiceForm({
         value={title}
         onChange={setTitle}
         error={errors.title}
+      />
+      <ImageField
+        label="Tool icon"
+        value={icon}
+        onChange={setIcon}
+        error={errors.icon}
+        hint="Square logo works best (PNG/WebP). Shown in the rent list and on the details page."
       />
       <TextAreaField
         label="Description on website"
@@ -308,6 +317,7 @@ export function RentServicesManager() {
                         service.enabled ? "" : "opacity-75"
                       }`}
                     >
+                      <ToolIcon src={service.icon} name={service.title || service.name} size={40} />
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">
                           {service.title || service.name}

@@ -1,14 +1,11 @@
 "use client";
 
-import { Clock, LogIn, Search, ShoppingCart, Wallet } from "lucide-react";
+import { ArrowRight, Clock, Headphones, LayoutGrid, List, LogIn, RotateCcw, Search, Sparkles, Wallet } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { formatBdt } from "@/components/rent/shared";
-import { Modal } from "@/components/ui/modal";
-import { useToast } from "@/components/ui/toast";
-import { apiFetch, ApiClientError, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
-import type { PublicRentServiceDTO, RentOrderDTO } from "@/types";
+import { useEffect, useMemo, useState } from "react";
+import { formatBdt, ToolIcon } from "@/components/rent/shared";
+import { apiFetch, ApiClientError, errorMessage } from "@/lib/client-api";
+import type { PublicRentServiceDTO } from "@/types";
 
 interface Me {
   name: string;
@@ -16,7 +13,7 @@ interface Me {
 }
 
 /** Signed-in customer or null, without the redirect apiFetch does on 401. */
-async function fetchMe(): Promise<Me | null> {
+export async function fetchMe(): Promise<Me | null> {
   try {
     const response = await fetch("/api/me", { cache: "no-store" });
     if (!response.ok) return null;
@@ -26,244 +23,125 @@ async function fetchMe(): Promise<Me | null> {
   }
 }
 
-function OrderForm({
-  service,
-  me,
-  ordersEnabled,
-  onDone,
-  onCancel,
-}: {
-  service: PublicRentServiceDTO;
-  me: Me | null;
-  ordersEnabled: boolean;
-  onDone: (balance: number) => void;
-  onCancel: () => void;
-}) {
-  const [fields, setFields] = useState<Record<string, string>>({});
-  const minQuantity = service.minQuantity ?? 1;
-  const maxQuantity = Math.max(service.maxQuantity ?? 1, minQuantity);
-  const [quantityText, setQuantityText] = useState(String(minQuantity));
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const toast = useToast();
+type View = "list" | "grid";
+const VIEW_KEY = "rent-view";
 
-  if (!me) {
-    const next = encodeURIComponent("/rent");
-    return (
-      <div className="space-y-4 text-center">
-        <p className="text-sm text-admin-muted">Sign in or create a free account to rent this tool.</p>
-        <div className="flex flex-col justify-center gap-2 sm:flex-row">
-          <Link href={`/login?next=${next}`} className="admin-btn admin-btn-primary">
-            <LogIn aria-hidden className="size-4" /> Sign in
-          </Link>
-          <Link href={`/register?next=${next}`} className="admin-btn admin-btn-secondary">
-            Create account
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const parsedQuantity = Number(quantityText);
-  const quantityValid = Number.isInteger(parsedQuantity) && parsedQuantity >= minQuantity && parsedQuantity <= maxQuantity;
-  const quantity = quantityValid ? parsedQuantity : minQuantity;
-  const total = service.priceBdt * quantity;
-  const shortBy = total - me.balance;
-  const quantityError =
-    errors.quantity ??
-    (quantityValid ? undefined : `Enter ${minQuantity === maxQuantity ? minQuantity : `${minQuantity}–${maxQuantity}`}`);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    setErrors({});
-    try {
-      const result = await apiFetch<{ order: RentOrderDTO; balance: number; message: string }>("/api/me/orders", {
-        method: "POST",
-        body: { serviceId: service.id, fields, quantity },
-      });
-      toast.success(result.message);
-      onDone(result.balance);
-    } catch (submitError) {
-      setErrors(fieldErrorsOf(submitError));
-      setError(errorMessage(submitError));
-      setBusy(false);
-    }
-  }
-
+function DeliveryBadge({ text }: { text: string }) {
+  if (!text) return <span className="text-muted">—</span>;
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
-      <dl className="grid grid-cols-2 gap-3 rounded-lg bg-admin-bg p-3 text-sm">
-        <div>
-          <dt className="text-admin-muted">Price</dt>
-          <dd className="text-lg font-semibold">{formatBdt(total)}</dd>
-          {quantity > 1 && (
-            <dd className="text-xs text-admin-muted">
-              {formatBdt(service.priceBdt)} × {quantity}
-            </dd>
-          )}
-        </div>
-        <div>
-          <dt className="text-admin-muted">Your balance</dt>
-          <dd className={`text-lg font-semibold ${shortBy > 0 ? "text-status-offline" : "text-status-online"}`}>
-            {formatBdt(me.balance)}
-          </dd>
-        </div>
-      </dl>
-
-      {service.info && <p className="text-sm whitespace-pre-line text-admin-muted">{service.info}</p>}
-
-      <div>
-        <label htmlFor="field-quantity" className="mb-1.5 block text-sm font-medium">
-          Quantity
-        </label>
-        <input
-          id="field-quantity"
-          type="number"
-          inputMode="numeric"
-          min={minQuantity}
-          max={maxQuantity}
-          step={1}
-          value={quantityText}
-          readOnly={minQuantity === maxQuantity}
-          aria-invalid={Boolean(quantityError)}
-          onChange={(event) => {
-            setQuantityText(event.target.value);
-            setErrors((current) => clearFieldError(current, "quantity"));
-          }}
-          className="admin-input"
-        />
-        {quantityError ? (
-          <p className="mt-1 text-xs text-status-offline">{quantityError}</p>
-        ) : (
-          minQuantity !== maxQuantity && (
-            <p className="mt-1 text-xs text-admin-muted">
-              {minQuantity}–{maxQuantity}
-            </p>
-          )
-        )}
-      </div>
-
-      {service.customFields.map((field) => {
-        const id = `field-${field.name}`;
-        const fieldError = errors[field.name];
-        const common = {
-          id,
-          value: fields[field.name] ?? "",
-          "aria-invalid": Boolean(fieldError),
-          className: "admin-input",
-          onChange: (event: { target: { value: string } }) => {
-            const value = event.target.value;
-            setFields((current) => ({ ...current, [field.name]: value }));
-            setErrors((current) => clearFieldError(current, field.name));
-          },
-        };
-        return (
-          <div key={field.name}>
-            <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
-              {field.name}
-              {field.required && <span className="text-status-offline"> *</span>}
-            </label>
-            {field.options.length > 0 ? (
-              <select {...common}>
-                <option value="">Choose…</option>
-                {field.options.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input {...common} type="text" maxLength={300} />
-            )}
-            {fieldError && <p className="mt-1 text-xs text-status-offline">{fieldError}</p>}
-          </div>
-        );
-      })}
-
-      {error && (
-        <p role="alert" className="rounded-md border border-status-offline/40 bg-status-offline/10 px-3 py-2 text-sm">
-          {error}
-        </p>
-      )}
-
-      {!ordersEnabled ? (
-        <p className="rounded-md bg-status-maintenance/10 px-3 py-2 text-sm text-status-maintenance">
-          New orders are paused right now. Please check back soon.
-        </p>
-      ) : shortBy > 0 ? (
-        <p className="rounded-md bg-status-maintenance/10 px-3 py-2 text-sm text-status-maintenance">
-          You need {formatBdt(shortBy)} more. Contact us to add balance to your account.
-        </p>
-      ) : null}
-
-      <div className="flex justify-end gap-2 pt-1">
-        <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">
-          Cancel
-        </button>
-        <button type="submit" disabled={busy || shortBy > 0 || !ordersEnabled || !quantityValid} className="admin-btn admin-btn-primary">
-          <ShoppingCart aria-hidden className="size-4" />
-          {busy ? "Ordering…" : `Rent for ${formatBdt(total)}`}
-        </button>
-      </div>
-    </form>
+    <span className="inline-flex items-center gap-1 rounded-lg bg-cyan/10 px-2 py-1 text-xs font-medium whitespace-nowrap text-cyan">
+      <Clock aria-hidden className="size-3" /> {text}
+    </span>
   );
+}
+
+function MinQtyBadge({ value }: { value: number }) {
+  return <span className="rounded-lg bg-purple/15 px-2 py-1 text-xs font-semibold text-purple">#{value}</span>;
 }
 
 export function RentCatalog() {
   const [services, setServices] = useState<PublicRentServiceDTO[] | null>(null);
-  const [ordersEnabled, setOrdersEnabled] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("");
-  const [ordering, setOrdering] = useState<PublicRentServiceDTO | null>(null);
-  const router = useRouter();
+  const [view, setView] = useState<View>("list");
 
   useEffect(() => {
     let active = true;
-    apiFetch<{ services: PublicRentServiceDTO[]; ordersEnabled: boolean }>("/api/rent/services")
-      .then((data) => {
-        if (!active) return;
-        setServices(data.services);
-        setOrdersEnabled(data.ordersEnabled);
-      })
+    apiFetch<{ services: PublicRentServiceDTO[] }>("/api/rent/services")
+      .then((data) => active && setServices(data.services))
       .catch((error: unknown) => active && setLoadError(error instanceof ApiClientError ? error.message : errorMessage(error)));
     void fetchMe().then((value) => active && setMe(value));
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring a per-viewer preference after mount
+      if (saved === "grid" || saved === "list") setView(saved);
+    } catch {
+      // Storage can be blocked; the default view is fine.
+    }
     return () => {
       active = false;
     };
   }, []);
 
+  function changeView(next: View) {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // ignore
+    }
+  }
+
   const groups = useMemo(() => [...new Set((services ?? []).map((service) => service.group).filter(Boolean))].sort(), [services]);
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (services ?? []).filter(
-      (service) => (!group || service.group === group) && (!needle || service.name.toLowerCase().includes(needle)),
+      (service) =>
+        (!group || service.group === group) &&
+        (!needle || service.name.toLowerCase().includes(needle) || String(service.code).includes(needle)),
     );
   }, [services, query, group]);
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Summary */}
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        {[
+          { icon: Sparkles, value: services ? String(services.length) : "—", label: "Services" },
+          { icon: Headphones, value: "24/7", label: "Support" },
+          { icon: Clock, value: "Fast", label: "Delivery" },
+        ].map(({ icon: Icon, value, label }) => (
+          <div key={label} className="neon-card flex flex-col items-center gap-1 p-3 text-center sm:flex-row sm:gap-3 sm:p-4 sm:text-left">
+            <Icon aria-hidden className="size-5 text-cyan" />
+            <div>
+              <p className="font-display text-lg font-bold sm:text-xl">{value}</p>
+              <p className="text-xs text-muted">{label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search + filters */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="relative flex-1">
-          <span className="sr-only">Search tools</span>
+          <span className="sr-only">Search services</span>
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search tools, e.g. Unlock Tool"
+            placeholder="Search services or ID…"
             className="neon-input pl-9!"
           />
         </label>
+        <button
+          type="button"
+          onClick={() => {
+            setQuery("");
+            setGroup("");
+          }}
+          className="btn-outline min-h-11! shrink-0 px-4! text-sm"
+        >
+          <RotateCcw aria-hidden className="size-4" /> Reset
+        </button>
+        {me ? (
+          <Link href="/account" className="btn-outline min-h-11! shrink-0 px-4! text-sm">
+            <Wallet aria-hidden className="size-4" /> {formatBdt(me.balance)}
+          </Link>
+        ) : (
+          <Link href="/login?next=%2Frent" className="btn-outline min-h-11! shrink-0 px-4! text-sm">
+            <LogIn aria-hidden className="size-4" /> Sign in
+          </Link>
+        )}
+      </div>
+      <div className="mb-6 flex items-center gap-3">
         {groups.length > 1 && (
-          <label className="sm:w-56">
-            <span className="sr-only">Filter by group</span>
+          <label className="min-w-0 flex-1 sm:max-w-64 sm:flex-none">
+            <span className="sr-only">Filter by category</span>
             <select value={group} onChange={(event) => setGroup(event.target.value)} className="neon-input">
-              <option value="">All groups</option>
+              <option value="">All categories</option>
               {groups.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -272,15 +150,25 @@ export function RentCatalog() {
             </select>
           </label>
         )}
-        {me ? (
-          <Link href="/account" className="btn-outline min-h-11! shrink-0 text-sm">
-            <Wallet aria-hidden className="size-4" /> {formatBdt(me.balance)}
-          </Link>
-        ) : (
-          <Link href="/login?next=%2Frent" className="btn-outline min-h-11! shrink-0 text-sm">
-            <LogIn aria-hidden className="size-4" /> Sign in
-          </Link>
-        )}
+        <div role="group" aria-label="Layout" className="ml-auto flex gap-1 rounded-xl border border-line/50 p-1">
+          {(
+            [
+              { value: "list", icon: List, label: "List view" },
+              { value: "grid", icon: LayoutGrid, label: "Grid view" },
+            ] as const
+          ).map(({ value, icon: Icon, label }) => (
+            <button
+              key={value}
+              type="button"
+              aria-label={label}
+              aria-pressed={view === value}
+              onClick={() => changeView(value)}
+              className={`rounded-lg p-2 transition ${view === value ? "bg-primary text-white" : "text-muted hover:text-foreground"}`}
+            >
+              <Icon aria-hidden className="size-4" />
+            </button>
+          ))}
+        </div>
       </div>
 
       {loadError ? (
@@ -288,57 +176,97 @@ export function RentCatalog() {
           {loadError}
         </p>
       ) : services === null ? (
-        <div role="status" aria-label="Loading" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div role="status" aria-label="Loading" className="space-y-3">
           {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="skeleton h-40" />
+            <div key={index} className="skeleton h-16" />
           ))}
         </div>
       ) : visible.length === 0 ? (
         <p className="neon-card p-8 text-center text-muted">
-          {services.length === 0 ? "No tools are available for rent yet. Please check back soon." : "No tools match your search."}
+          {services.length === 0 ? "No tools are available for rent yet. Please check back soon." : "No services match your search."}
         </p>
+      ) : view === "list" ? (
+        <div className="neon-card overflow-x-auto p-0">
+          <table className="w-full min-w-[40rem] text-sm">
+            <thead>
+              <tr className="border-b border-line/40 text-left text-xs tracking-wide text-muted uppercase">
+                <th scope="col" className="px-4 py-3 font-semibold">
+                  ID
+                </th>
+                <th scope="col" className="px-2 py-3 font-semibold">
+                  Service name
+                </th>
+                <th scope="col" className="px-2 py-3 font-semibold">
+                  Delivery
+                </th>
+                <th scope="col" className="px-2 py-3 text-center font-semibold">
+                  Min qty
+                </th>
+                <th scope="col" className="px-2 py-3 text-right font-semibold">
+                  Price
+                </th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold">
+                  <span className="sr-only">Action</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line/25">
+              {visible.map((service) => (
+                <tr key={service.id} className="transition hover:bg-primary/5">
+                  <td className="px-4 py-3">
+                    <ToolIcon src={service.icon} name={service.name} size={36} />
+                  </td>
+                  <td className="px-2 py-3">
+                    <Link href={`/rent/${service.id}`} className="font-semibold hover:text-cyan">
+                      {service.name}
+                    </Link>
+                    <p className="text-xs text-muted">ID: #{service.code}</p>
+                  </td>
+                  <td className="px-2 py-3">
+                    <DeliveryBadge text={service.deliveryTime} />
+                  </td>
+                  <td className="px-2 py-3 text-center">
+                    <MinQtyBadge value={service.minQuantity} />
+                  </td>
+                  <td className="px-2 py-3 text-right font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/rent/${service.id}`} className="btn-neon min-h-9! px-3! text-xs">
+                      View <ArrowRight aria-hidden className="size-3.5" />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((service) => (
             <li key={service.id} className="neon-card neon-card-hover flex flex-col p-5">
-              {service.group && <p className="text-xs font-semibold tracking-wide text-cyan uppercase">{service.group}</p>}
-              <h2 className="mt-1 flex-1 font-display font-semibold">{service.name}</h2>
-              {service.deliveryTime && (
-                <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted">
-                  <Clock aria-hidden className="size-3.5" /> {service.deliveryTime}
-                </p>
-              )}
+              <div className="flex items-start gap-3">
+                <ToolIcon src={service.icon} name={service.name} size={48} />
+                <div className="min-w-0">
+                  {service.group && <p className="truncate text-xs font-semibold tracking-wide text-cyan uppercase">{service.group}</p>}
+                  <h2 className="font-display font-semibold">{service.name}</h2>
+                  <p className="text-xs text-muted">ID: #{service.code}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-1 flex-wrap items-start gap-2">
+                <DeliveryBadge text={service.deliveryTime} />
+                <span className="inline-flex items-center gap-1 text-xs text-muted">
+                  Min <MinQtyBadge value={service.minQuantity} />
+                </span>
+              </div>
               <div className="mt-4 flex items-center justify-between gap-3">
                 <span className="text-2xl font-bold text-neon">{formatBdt(service.priceBdt)}</span>
-                <button type="button" onClick={() => setOrdering(service)} className="btn-neon min-h-10! px-4! text-sm">
-                  {me ? (
-                    <>
-                      <ShoppingCart aria-hidden className="size-4" /> Rent now
-                    </>
-                  ) : (
-                    <>
-                      <LogIn aria-hidden className="size-4" /> Sign in to rent
-                    </>
-                  )}
-                </button>
+                <Link href={`/rent/${service.id}`} className="btn-neon min-h-10! px-4! text-sm">
+                  View <ArrowRight aria-hidden className="size-4" />
+                </Link>
               </div>
             </li>
           ))}
         </ul>
       )}
-
-      <Modal open={ordering !== null} onClose={() => setOrdering(null)} title={ordering?.name ?? "Rent"}>
-        {ordering && (
-          <OrderForm
-            key={ordering.id}
-            service={ordering}
-            me={me}
-            ordersEnabled={ordersEnabled}
-            onCancel={() => setOrdering(null)}
-            onDone={() => router.push("/account")}
-          />
-        )}
-      </Modal>
     </div>
   );
 }

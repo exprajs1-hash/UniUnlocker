@@ -29,6 +29,8 @@ export interface IRentService {
   info: string;
   /** Written by the admin and shown to customers. Sync never changes it. */
   description: string;
+  /** Tool logo/icon image set by the admin; shown in the catalog and on the details page. */
+  icon: string;
   customFields: IRentCustomField[];
   /** Quantity a customer may order, from the provider. 1–1 for services not sold by quantity. */
   minQuantity: number;
@@ -53,6 +55,7 @@ const RentServiceSchema = new Schema<IRentService>(
     deliveryTime: { type: String, default: "" },
     info: { type: String, default: "" },
     description: { type: String, default: "", trim: true },
+    icon: { type: String, default: "", trim: true },
     // `type` is wrapped because a bare `type` key would be read as the subdocument's own schema type.
     customFields: [
       {

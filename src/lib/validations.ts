@@ -274,6 +274,13 @@ export const rentServicePatchSchema = z.object({
   enabled: z.boolean().optional(),
   title: z.string().trim().max(200, "This value is too long").optional(),
   description: z.string().trim().max(3000, "This description is too long").optional(),
+  // No default here: a PATCH that leaves `icon` out (e.g. the enable toggle) must not clear it.
+  icon: z
+    .string()
+    .trim()
+    .max(500, "This URL is too long")
+    .refine((value) => !value || isUsableImageUrl(value), "Upload an image, or paste an image link starting with https://")
+    .optional(),
   priceBdt: z
     .preprocess(
       (value) => (typeof value === "string" ? (value.trim() === "" ? null : Number(value.trim())) : value),
