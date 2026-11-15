@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Great_Vibes, Inter, Sora } from "next/font/google";
+import { Great_Vibes, Montserrat, Poppins } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { SEO_KEYWORDS, SITE_URL } from "@/lib/seo";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const body = Inter({ variable: "--font-body", subsets: ["latin"] });
-const heading = Sora({ variable: "--font-heading", subsets: ["latin"] });
+// Poppins everywhere: 800 main headings, 700 section headings, 500 body/descriptions, 400 normal text
+// (600 is kept for the existing font-semibold labels). Montserrat is the fallback heading font.
+const body = Poppins({ variable: "--font-body", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
+const headingAlt = Montserrat({ variable: "--font-heading-alt", subsets: ["latin"], weight: ["700", "800"] });
 const signature = Great_Vibes({ variable: "--font-signature", subsets: ["latin"], weight: "400" });
 
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
@@ -39,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${body.variable} ${heading.variable} ${signature.variable} h-full antialiased`}
+      className={`${body.variable} ${headingAlt.variable} ${signature.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

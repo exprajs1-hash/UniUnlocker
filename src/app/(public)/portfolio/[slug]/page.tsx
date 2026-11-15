@@ -34,7 +34,7 @@ async function ProjectDetails({ params }: Pick<Props, "params">) {
 
   return (
     <article>
-      <h1 className="font-display text-3xl font-bold sm:text-5xl">{project.title}</h1>
+      <h1 className="font-display text-3xl font-extrabold sm:text-5xl">{project.title}</h1>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-cyan">
           <Tag aria-hidden className="size-3.5" /> {project.category}

@@ -362,7 +362,7 @@ export function RentCatalog() {
                   {service.group && (
                     <p className="truncate text-xs font-semibold tracking-wide text-cyan uppercase">{service.group}</p>
                   )}
-                  <h2 className="font-display font-semibold">{service.name}</h2>
+                  <h2 className="font-display font-bold">{service.name}</h2>
                   <p className="text-xs text-muted">ID: #{service.code}</p>
                 </div>
               </div>

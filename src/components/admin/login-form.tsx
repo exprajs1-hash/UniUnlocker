@@ -38,7 +38,7 @@ export function LoginForm() {
         <span className="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
           <LockKeyhole aria-hidden className="size-6" />
         </span>
-        <h1 className="text-xl font-semibold">Admin sign in</h1>
+        <h1 className="text-xl font-extrabold">Admin sign in</h1>
         <p className="text-sm text-admin-muted">Manage your website content.</p>
       </div>
       {error && (

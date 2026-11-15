@@ -21,7 +21,7 @@ function Section({ title, description, children }: { title: string; description?
   return (
     <section className="admin-card space-y-4 p-5">
       <div>
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="font-bold">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-admin-muted">{description}</p>}
       </div>
       {children}

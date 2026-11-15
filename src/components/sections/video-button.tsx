@@ -50,7 +50,7 @@ export function VideoButton({ url, contactHref }: { url: string; contactHref: st
         {open && (
           <>
             <div className="flex items-center justify-between px-4 py-3">
-              <h2 className="font-display font-semibold">Introduction video</h2>
+              <h2 className="font-display font-bold">Introduction video</h2>
               <button type="button" aria-label="Close video" onClick={() => setOpen(false)} className="hover:text-cyan">
                 <X aria-hidden className="size-5" />
               </button>

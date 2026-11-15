@@ -69,7 +69,7 @@ async function Stats() {
 export default function DashboardPage() {
   return (
     <>
-      <h1 className="mb-1 text-2xl font-semibold">Dashboard</h1>
+      <h1 className="mb-1 text-2xl font-extrabold">Dashboard</h1>
       <p className="mb-6 text-sm text-admin-muted">An overview of your website content.</p>
       <Suspense
         fallback={

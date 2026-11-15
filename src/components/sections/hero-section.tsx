@@ -17,7 +17,7 @@ export async function HeroSection() {
               <span aria-hidden className="h-px w-16 bg-linear-to-r from-cyan to-transparent" />
             </p>
           )}
-          <h1 className="mt-5 font-display text-4xl leading-[1.12] font-bold sm:text-5xl xl:text-[3.3rem]">
+          <h1 className="mt-5 font-display text-4xl leading-[1.12] font-extrabold sm:text-5xl xl:text-[3.3rem]">
             {/* The brand name in the H1 is the strongest on-page signal for a "UniUnlocker" search. */}
             <span className="sr-only">{settings.siteName} – </span>
             {settings.heroTitle}

@@ -104,7 +104,7 @@
   --color-admin-muted: var(--admin-muted);
   --color-glass: var(--glass);
   --font-sans: var(--font-body);
-  --font-display: var(--font-heading);
+  --font-display: var(--font-body), var(--font-heading-alt);
   --font-signature: var(--font-signature);
 }
 
@@ -138,6 +138,23 @@ body {
 :focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
+}
+
+/* Type scale (Poppins). In the base layer so a component's own font-* class still wins. */
+@layer base {
+  h1 {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-weight: 800;
+  }
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-weight: 700;
+  }
+  p {
+    font-weight: 500;
+  }
 }
 
 dialog::backdrop {

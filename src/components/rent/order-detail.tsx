@@ -107,7 +107,7 @@ function buildSteps(order: RentOrderDetailDTO): Step[] {
 function CardHeader({ icon: Icon, title, as: Tag = "h2", action }: { icon: LucideIcon; title: string; as?: "h1" | "h2"; action?: ReactNode }) {
   return (
     <div className="relative flex items-center justify-between gap-3 px-5 py-4 sm:px-6">
-      <Tag className="flex items-center gap-3 font-display text-lg font-bold">
+      <Tag className={`flex items-center gap-3 font-display text-lg ${Tag === "h1" ? "font-extrabold" : "font-bold"}`}>
         <span className="flex size-8 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/40">
           <Icon aria-hidden className="size-4" />
         </span>
@@ -304,15 +304,15 @@ export function OrderDetail({ id }: { id: string }) {
             const Icon = step.icon;
             const waiting = step.state === "waiting";
             const active = !waiting && (last || step.state === "current");
-            // Icon fill, its glow (halo + ring + coloured shadow), and the row's soft highlight.
+            // Icon fill and the row's soft highlight.
             const tone =
               step.state === "failed"
-                ? { icon: "bg-linear-to-br from-status-offline to-status-offline/80 shadow-status-offline/60 ring-status-offline/20", halo: "bg-status-offline/50", row: "from-status-offline/10" }
+                ? { icon: "bg-linear-to-br from-status-offline to-status-offline/80", row: "from-status-offline/10" }
                 : waiting
-                  ? { icon: "border border-line/60 bg-background/40 text-muted shadow-none ring-transparent", halo: "", row: "" }
+                  ? { icon: "border border-line/60 bg-background/40 text-muted", row: "" }
                   : active
-                    ? { icon: "bg-linear-to-br from-primary to-purple shadow-primary/60 ring-primary/20", halo: "bg-primary/50", row: "from-primary/10" }
-                    : { icon: "bg-linear-to-br from-status-online to-status-online/80 shadow-status-online/60 ring-status-online/20", halo: "bg-status-online/45", row: "from-status-online/10" };
+                    ? { icon: "bg-linear-to-br from-primary to-purple", row: "from-primary/10" }
+                    : { icon: "bg-linear-to-br from-status-online to-status-online/80", row: "from-status-online/10" };
             return (
               <li key={step.label} className="relative flex gap-4 pb-5 last:pb-0">
                 {!last && (
@@ -321,30 +321,19 @@ export function OrderDetail({ id }: { id: string }) {
                     className={`absolute top-11 left-[1.1rem] h-[calc(100%-2.75rem)] w-0.5 rounded-full ${
                       waiting || steps[index + 1]?.state === "waiting"
                         ? "bg-line/40"
-                        : "bg-linear-to-b from-status-online to-status-online/40 shadow-[0_0_8px] shadow-status-online/70"
+                        : "bg-linear-to-b from-status-online to-status-online/40"
                     }`}
                   />
                 )}
-                <span className="relative shrink-0">
-                  {tone.halo && (
-                    <span aria-hidden className={`absolute -inset-1.5 rounded-full blur-md ${tone.halo} ${active ? "animate-pulse" : "opacity-70"}`} />
-                  )}
-                  <span
-                    className={`relative flex size-9 items-center justify-center rounded-full text-white shadow-lg ring-4 ${tone.icon}`}
-                  >
-                    <Icon aria-hidden className={`size-4 ${step.state === "current" ? "animate-spin" : ""}`} strokeWidth={2.75} />
-                  </span>
+                <span className={`flex size-9 shrink-0 items-center justify-center rounded-full text-white ${tone.icon}`}>
+                  <Icon aria-hidden className={`size-4 ${step.state === "current" ? "animate-spin" : ""}`} strokeWidth={2.75} />
                 </span>
                 <div
                   className={`min-w-0 flex-1 rounded-xl px-3 py-1.5 ${tone.row ? `bg-linear-to-r ${tone.row} to-transparent` : ""}`}
                 >
                   <p
                     className={`text-base font-bold ${
-                      step.state === "failed"
-                        ? "text-status-offline drop-shadow-[0_0_6px_color-mix(in_oklab,var(--color-status-offline)_45%,transparent)]"
-                        : waiting
-                          ? "text-muted"
-                          : "text-status-online drop-shadow-[0_0_6px_color-mix(in_oklab,var(--color-status-online)_45%,transparent)]"
+                      step.state === "failed" ? "text-status-offline" : waiting ? "text-muted" : "text-status-online"
                     }`}
                   >
                     {step.label}

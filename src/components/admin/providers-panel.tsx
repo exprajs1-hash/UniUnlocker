@@ -204,7 +204,7 @@ export function ProvidersPanel({ onServicesChanged }: { onServicesChanged: () =>
     <section className="admin-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-semibold">Providers</h2>
+          <h2 className="font-bold">Providers</h2>
           <p className="text-xs text-admin-muted">API accounts that rent services are bought from.</p>
         </div>
         <button type="button" onClick={() => setEditing("new")} className="admin-btn admin-btn-primary">

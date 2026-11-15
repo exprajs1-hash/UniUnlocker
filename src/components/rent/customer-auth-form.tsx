@@ -96,7 +96,7 @@ export function CustomerAuthForm({ mode }: { mode: Mode }) {
   return (
     <form onSubmit={submit} noValidate className="neon-card w-full max-w-md space-y-4 p-6 sm:p-8">
       <div className="pb-1 text-center">
-        <h1 className="font-display text-2xl font-bold">{isRegister ? "Create your account" : "Sign in"}</h1>
+        <h1 className="font-display text-2xl font-extrabold">{isRegister ? "Create your account" : "Sign in"}</h1>
         <p className="mt-1 text-sm text-muted">
           {isRegister ? "Register to rent tools with your balance." : "Sign in to rent tools and see your orders."}
         </p>

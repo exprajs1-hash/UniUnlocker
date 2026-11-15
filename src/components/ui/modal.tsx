@@ -42,7 +42,7 @@ export function Modal({
       {open && (
         <div className="p-5 sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-4">
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <h2 className="text-lg font-bold">{title}</h2>
             <button type="button" aria-label="Close" onClick={onClose} className="admin-icon-btn -mt-1 -mr-1">
               <X aria-hidden className="size-5" />
             </button>

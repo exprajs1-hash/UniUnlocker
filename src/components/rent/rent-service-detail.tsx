@@ -104,7 +104,7 @@ export function RentServiceDetail({ id }: { id: string }) {
           <div className="mt-5 flex items-start gap-4">
             <ToolIcon src={service.icon} name={service.name} size={64} />
             <div className="min-w-0">
-              <h1 className="font-display text-xl font-bold wrap-break-word sm:text-3xl">{service.name}</h1>
+              <h1 className="font-display text-xl font-extrabold wrap-break-word sm:text-3xl">{service.name}</h1>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                 {service.group && (
                   <span className="inline-flex items-center gap-1">
@@ -133,7 +133,7 @@ export function RentServiceDetail({ id }: { id: string }) {
 
       {/* Order */}
       <section className="neon-card p-5 sm:p-7">
-        <h2 className="flex items-center gap-3 font-display text-lg font-semibold">
+        <h2 className="flex items-center gap-3 font-display text-lg font-bold">
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
             <ShoppingCart aria-hidden className="size-4.5" />
           </span>

@@ -313,7 +313,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
             </span>
             <div className="min-w-0">
               <p className="text-sm text-muted">Welcome back</p>
-              <h1 className="truncate font-display text-xl font-bold sm:text-2xl">{me.name}</h1>
+              <h1 className="truncate font-display text-xl font-extrabold sm:text-2xl">{me.name}</h1>
               <p className="truncate text-sm text-muted">{me.email}</p>
             </div>
           </div>
@@ -405,7 +405,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
                 <ShoppingBag aria-hidden className="size-4.5" />
               </span>
               <div>
-                <h2 className="font-display font-semibold">{showAll ? "All orders" : "Recent orders"}</h2>
+                <h2 className="font-display font-bold">{showAll ? "All orders" : "Recent orders"}</h2>
                 <p className="text-xs text-muted">Your latest orders and their current status</p>
               </div>
             </div>
@@ -433,7 +433,7 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
                 <Wallet aria-hidden className="size-4.5" />
               </span>
               <div>
-                <h2 className="font-display font-semibold">Wallet history</h2>
+                <h2 className="font-display font-bold">Wallet history</h2>
                 <p className="text-xs text-muted">When and how much money was added to your balance</p>
               </div>
             </div>
