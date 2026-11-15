@@ -69,7 +69,7 @@ const HERO: Record<RentCategory, { highlight: string; subtitle: string }> = {
   },
 };
 
-const TYPE_MS = 85;
+const TYPE_MS = 150;
 
 /**
  * Types `text` out letter by letter with a blinking cursor, restarting when it
@@ -131,7 +131,7 @@ function ServicesHero({ category, count }: { category: RentCategory; count: numb
           <Icon aria-hidden className="size-3.5" />
           {count === null ? "Premium services" : `${count}${count >= 10 ? "+" : ""} Premium Services Available`}
         </span>
-        <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl lg:text-[56px]">
+        <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl lg:text-[56px] lg:leading-14">
           Premium <Typewriter text={highlight} className="text-gradient-flow" /> Services
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-muted motion-safe:animate-[hero-in_0.6s_ease-out_0.25s_both] sm:text-base">
