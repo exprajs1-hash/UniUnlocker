@@ -9,6 +9,7 @@ import {
 } from "@/lib/gsm-api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getProviderCredentials } from "@/lib/providers";
+import { stripProviderContacts } from "@/lib/provider-text";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
 import { serialize } from "@/lib/serialize";
 import { BalanceTransaction } from "@/models/BalanceTransaction";
@@ -164,7 +165,8 @@ export function toOrderDTO(doc: Omit<IRentOrder, "customer"> & { _id: unknown })
     priceBdt: doc.priceBdt,
     fields: doc.fields ?? {},
     status: doc.status,
-    result: doc.result,
+    // Provider results lose the provider's own contact number; a result the admin typed is shown as written.
+    result: doc.manualAt ? doc.result : stripProviderContacts(doc.result ?? ""),
     refunded: doc.refunded,
     createdAt: new Date(doc.createdAt).toISOString(),
   };
