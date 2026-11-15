@@ -93,12 +93,9 @@ export function RentCatalog() {
     }
   }
 
-  // A tab shows only once the admin has enabled at least one service in it.
-  const categories = useMemo(
-    () => RENT_CATEGORIES.filter((value) => (services ?? []).some((service) => service.category === value)),
-    [services],
-  );
-  const activeCategory: RentCategory | null = categories.includes(category) ? category : (categories[0] ?? null);
+  // All three sections are always shown; an empty one says so until the admin enables services in it.
+  const categories = RENT_CATEGORIES;
+  const activeCategory: RentCategory = category;
   const inCategory = useMemo(
     () => (services ?? []).filter((service) => service.category === activeCategory),
     [services, activeCategory],
@@ -126,7 +123,7 @@ export function RentCatalog() {
   return (
     <div>
       {/* Sections */}
-      {categories.length > 1 && (
+      {services !== null && (
         <div role="tablist" aria-label="Service type" className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-line/50 p-1">
           {categories.map((value) => {
             const Icon = CATEGORY_ICONS[value];
@@ -248,7 +245,9 @@ export function RentCatalog() {
         </div>
       ) : visible.length === 0 ? (
         <p className="neon-card p-8 text-center text-muted">
-          {services.length === 0 ? "No tools are available for rent yet. Please check back soon." : "No services match your search."}
+          {inCategory.length === 0
+            ? `No ${RENT_CATEGORY_LABELS[activeCategory]} available yet. Please check back soon.`
+            : "No services match your search."}
         </p>
       ) : view === "list" ? (
         <div className="neon-card overflow-x-auto p-0">

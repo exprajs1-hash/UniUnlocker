@@ -6,6 +6,7 @@ import {
   CircleCheck,
   Clock,
   Headphones,
+  Lock,
   LogIn,
   MapPin,
   Minus,
@@ -21,13 +22,30 @@ import { useEffect, useState, type FormEvent } from "react";
 import { fetchMe } from "@/components/rent/rent-catalog";
 import { formatBdt, ToolIcon } from "@/components/rent/shared";
 import { useToast } from "@/components/ui/toast";
-import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
+import {
+  apiFetch,
+  clearFieldError,
+  errorMessage,
+  fieldErrorsOf,
+} from "@/lib/client-api";
 import type { PublicRentServiceDTO, RentOrderDTO } from "@/types";
 
 type Me = Awaited<ReturnType<typeof fetchMe>>;
 
-function Chip({ children, className }: { children: React.ReactNode; className: string }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>;
+function Chip({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 export function RentServiceDetail({ id }: { id: string }) {
@@ -38,7 +56,9 @@ export function RentServiceDetail({ id }: { id: string }) {
 
   useEffect(() => {
     let active = true;
-    apiFetch<{ service: PublicRentServiceDTO; ordersEnabled: boolean }>(`/api/rent/services/${id}`)
+    apiFetch<{ service: PublicRentServiceDTO; ordersEnabled: boolean }>(
+      `/api/rent/services/${id}`,
+    )
       .then((data) => {
         if (!active) return;
         setService(data.service);
@@ -55,7 +75,10 @@ export function RentServiceDetail({ id }: { id: string }) {
     return (
       <div className="neon-card p-8 text-center">
         <p className="text-muted">{loadError}</p>
-        <Link href="/rent" className="btn-outline mt-4 inline-flex min-h-10! px-4! text-sm">
+        <Link
+          href="/rent"
+          className="btn-outline mt-4 inline-flex min-h-10! px-4! text-sm"
+        >
           <ArrowLeft aria-hidden className="size-4" /> Back to Tools Rent
         </Link>
       </div>
@@ -74,7 +97,10 @@ export function RentServiceDetail({ id }: { id: string }) {
     <div className="space-y-6">
       {/* Header */}
       <section className="neon-card overflow-hidden p-5 sm:p-7">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/35 via-purple/25 to-cyan/10" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/35 via-purple/25 to-cyan/10"
+        />
         <div className="relative">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
@@ -85,7 +111,11 @@ export function RentServiceDetail({ id }: { id: string }) {
             </Link>
             <div className="flex gap-2">
               <Chip className="bg-status-online/15 text-status-online">
-                <span aria-hidden className="size-1.5 rounded-full bg-status-online" /> Active
+                <span
+                  aria-hidden
+                  className="size-1.5 rounded-full bg-status-online"
+                />{" "}
+                Active
               </Chip>
               <Chip className="bg-white/10 text-foreground">
                 <Tag aria-hidden className="size-3" /> Best price
@@ -96,7 +126,9 @@ export function RentServiceDetail({ id }: { id: string }) {
           <div className="mt-5 flex items-start gap-4">
             <ToolIcon src={service.icon} name={service.name} size={64} />
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-bold sm:text-3xl">{service.name}</h1>
+              <h1 className="font-display text-2xl font-bold sm:text-3xl">
+                {service.name}
+              </h1>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                 {service.group && (
                   <span className="inline-flex items-center gap-1">
@@ -110,10 +142,14 @@ export function RentServiceDetail({ id }: { id: string }) {
 
           <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-white/15 bg-background/40 p-4">
             <div>
-              <p className="text-xs font-semibold tracking-widest text-muted uppercase">Service price</p>
+              <p className="text-xs font-semibold tracking-widest text-muted uppercase">
+                Service price
+              </p>
               <p className="font-display text-3xl font-bold text-neon">
                 {formatBdt(service.priceBdt)}
-                <span className="ml-1 text-sm font-normal text-muted">/ per order</span>
+                <span className="ml-1 text-sm font-normal text-muted">
+                  / per order
+                </span>
               </p>
             </div>
             <span className="flex size-12 items-center justify-center rounded-xl bg-linear-to-br from-primary to-purple text-white">
@@ -143,7 +179,11 @@ export function RentServiceDetail({ id }: { id: string }) {
           </Chip>
         </div>
 
-        {service.info && <p className="mt-4 text-sm whitespace-pre-line text-muted">{service.info}</p>}
+        {service.info && (
+          <p className="mt-4 text-sm whitespace-pre-line text-muted">
+            {service.info}
+          </p>
+        )}
 
         {me === undefined ? (
           <div className="skeleton mt-5 h-64" />
@@ -158,7 +198,10 @@ export function RentServiceDetail({ id }: { id: string }) {
             { icon: CircleCheck, label: "Safe" },
             { icon: Zap, label: "Fast" },
           ].map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-2 rounded-xl border border-line/40 px-3 py-2 text-sm text-muted">
+            <li
+              key={label}
+              className="flex items-center gap-2 rounded-xl border border-line/40 px-3 py-2 text-sm text-muted"
+            >
               <Icon aria-hidden className="size-4 text-cyan" /> {label}
             </li>
           ))}
@@ -168,7 +211,15 @@ export function RentServiceDetail({ id }: { id: string }) {
   );
 }
 
-function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceDTO; me: Me; ordersEnabled: boolean }) {
+function OrderForm({
+  service,
+  me,
+  ordersEnabled,
+}: {
+  service: PublicRentServiceDTO;
+  me: Me;
+  ordersEnabled: boolean;
+}) {
   const minQuantity = service.minQuantity ?? 1;
   const maxQuantity = Math.max(service.maxQuantity ?? 1, minQuantity);
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -180,13 +231,20 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
   const router = useRouter();
 
   const parsedQuantity = Number(quantityText);
-  const quantityValid = Number.isInteger(parsedQuantity) && parsedQuantity >= minQuantity && parsedQuantity <= maxQuantity;
+  const quantityValid =
+    Number.isInteger(parsedQuantity) &&
+    parsedQuantity >= minQuantity &&
+    parsedQuantity <= maxQuantity;
   const quantity = quantityValid ? parsedQuantity : minQuantity;
   const total = service.priceBdt * quantity;
   const balance = me?.balance ?? 0;
   const shortBy = total - balance;
   const fixedQuantity = minQuantity === maxQuantity;
-  const quantityError = errors.quantity ?? (quantityValid ? undefined : `Enter ${fixedQuantity ? minQuantity : `${minQuantity}–${maxQuantity}`}`);
+  const quantityError =
+    errors.quantity ??
+    (quantityValid
+      ? undefined
+      : `Enter ${fixedQuantity ? minQuantity : `${minQuantity}–${maxQuantity}`}`);
 
   function step(delta: number) {
     const next = Math.min(maxQuantity, Math.max(minQuantity, quantity + delta));
@@ -200,7 +258,11 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
     setError(null);
     setErrors({});
     try {
-      const result = await apiFetch<{ order: RentOrderDTO; balance: number; message: string }>("/api/me/orders", {
+      const result = await apiFetch<{
+        order: RentOrderDTO;
+        balance: number;
+        message: string;
+      }>("/api/me/orders", {
         method: "POST",
         body: { serviceId: service.id, fields, quantity },
       });
@@ -233,9 +295,14 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
         };
         return (
           <div key={field.name}>
-            <label htmlFor={id} className="mb-1.5 block text-sm font-semibold uppercase">
+            <label
+              htmlFor={id}
+              className="mb-1.5 block text-sm font-semibold uppercase"
+            >
               {field.name}
-              {field.required && <span className="text-status-offline"> *</span>}
+              {field.required && (
+                <span className="text-status-offline"> *</span>
+              )}
             </label>
             {field.options.length > 0 ? (
               <select {...common}>
@@ -247,58 +314,86 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
                 ))}
               </select>
             ) : (
-              <input {...common} type="text" maxLength={300} placeholder={`Enter ${field.name}`} />
+              <input
+                {...common}
+                type="text"
+                maxLength={300}
+                placeholder={`Enter ${field.name}`}
+              />
             )}
-            {fieldError && <p className="mt-1 text-xs text-status-offline">{fieldError}</p>}
+            {fieldError && (
+              <p className="mt-1 text-xs text-status-offline">{fieldError}</p>
+            )}
           </div>
         );
       })}
 
-      <div>
-        <label htmlFor="field-quantity" className="mb-1.5 block text-sm font-semibold">
-          Quantity{" "}
-          <span className="font-normal text-muted">
-            {fixedQuantity ? `(Fixed: ${minQuantity})` : `(Min: ${minQuantity}, Max: ${maxQuantity})`}
-          </span>
-        </label>
-        <div className="flex items-stretch gap-2">
-          <button
-            type="button"
-            aria-label="Decrease quantity"
-            disabled={fixedQuantity || quantity <= minQuantity}
-            onClick={() => step(-1)}
-            className="btn-outline min-h-11! w-12 shrink-0 px-0!"
-          >
-            <Minus aria-hidden className="size-4" />
-          </button>
-          <input
-            id="field-quantity"
-            type="number"
-            inputMode="numeric"
-            min={minQuantity}
-            max={maxQuantity}
-            step={1}
-            value={quantityText}
-            readOnly={fixedQuantity}
-            aria-invalid={Boolean(quantityError)}
-            onChange={(event) => {
-              setQuantityText(event.target.value);
-              setErrors((current) => clearFieldError(current, "quantity"));
-            }}
-            className="neon-input text-center font-semibold"
-          />
-          <button
-            type="button"
-            aria-label="Increase quantity"
-            disabled={fixedQuantity || quantity >= maxQuantity}
-            onClick={() => step(1)}
-            className="btn-outline min-h-11! w-12 shrink-0 px-0!"
-          >
-            <Plus aria-hidden className="size-4" />
-          </button>
+      {fixedQuantity ? (
+        // The provider sells this service one order at a time, so there is nothing to type.
+        <div>
+          <p className="mb-1.5 text-sm font-semibold">Quantity</p>
+          <div className="flex items-center gap-3 rounded-xl border border-line/40 bg-background/30 px-4 py-2.5">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/20 font-bold text-primary">
+              {minQuantity}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+              <Lock aria-hidden className="size-3.5" /> This service is ordered{" "}
+              {minQuantity === 1 ? "one at a time" : `${minQuantity} at a time`}
+              .
+            </span>
+          </div>
         </div>
-        {quantityError && <p className="mt-1 text-xs text-status-offline">{quantityError}</p>}
-      </div>
+      ) : (
+        <div>
+          <label
+            htmlFor="field-quantity"
+            className="mb-1.5 block text-sm font-semibold"
+          >
+            Quantity{" "}
+            <span className="font-normal text-muted">{`(Min: ${minQuantity}, Max: ${maxQuantity})`}</span>
+          </label>
+          <div className="flex items-stretch gap-2">
+            <button
+              type="button"
+              aria-label="Decrease quantity"
+              disabled={quantity <= minQuantity}
+              onClick={() => step(-1)}
+              className="btn-outline min-h-11! w-12 shrink-0 px-0!"
+            >
+              <Minus aria-hidden className="size-4" />
+            </button>
+            <input
+              id="field-quantity"
+              // Text + numeric keyboard: no browser spinner arrows, and digits only.
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              value={quantityText}
+              aria-invalid={Boolean(quantityError)}
+              onChange={(event) => {
+                setQuantityText(
+                  event.target.value.replace(/\D/g, "").slice(0, 5),
+                );
+                setErrors((current) => clearFieldError(current, "quantity"));
+              }}
+              className="neon-input text-center font-semibold"
+            />
+            <button
+              type="button"
+              aria-label="Increase quantity"
+              disabled={quantity >= maxQuantity}
+              onClick={() => step(1)}
+              className="btn-outline min-h-11! w-12 shrink-0 px-0!"
+            >
+              <Plus aria-hidden className="size-4" />
+            </button>
+          </div>
+          {quantityError && (
+            <p className="mt-1 text-xs text-status-offline">{quantityError}</p>
+          )}
+        </div>
+      )}
 
       <dl className="divide-y divide-line/30 rounded-xl border border-line/40 bg-background/30 text-sm">
         <div className="flex justify-between gap-3 px-4 py-2.5">
@@ -306,19 +401,28 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
           <dd className="font-semibold">{formatBdt(service.priceBdt)}</dd>
         </div>
         <div className="flex justify-between gap-3 px-4 py-2.5">
-          <dt className="text-muted">Estimated total{quantity > 1 && ` (× ${quantity})`}</dt>
+          <dt className="text-muted">
+            Estimated total{quantity > 1 && ` (× ${quantity})`}
+          </dt>
           <dd className="font-bold text-neon">{formatBdt(total)}</dd>
         </div>
         {me && (
           <div className="flex justify-between gap-3 px-4 py-2.5">
             <dt className="text-muted">Account balance</dt>
-            <dd className={`font-semibold ${shortBy > 0 ? "text-status-offline" : "text-status-online"}`}>{formatBdt(balance)}</dd>
+            <dd
+              className={`font-semibold ${shortBy > 0 ? "text-status-offline" : "text-status-online"}`}
+            >
+              {formatBdt(balance)}
+            </dd>
           </div>
         )}
       </dl>
 
       {error && (
-        <p role="alert" className="rounded-md border border-status-offline/40 bg-status-offline/10 px-3 py-2 text-sm">
+        <p
+          role="alert"
+          className="rounded-md border border-status-offline/40 bg-status-offline/10 px-3 py-2 text-sm"
+        >
           {error}
         </p>
       )}
@@ -328,12 +432,17 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
         </p>
       ) : me && shortBy > 0 ? (
         <p className="rounded-md bg-status-maintenance/10 px-3 py-2 text-sm text-status-maintenance">
-          You need {formatBdt(shortBy)} more. Contact us to add balance to your account.
+          You need {formatBdt(shortBy)} more. Contact us to add balance to your
+          account.
         </p>
       ) : null}
 
       {me ? (
-        <button type="submit" disabled={busy || shortBy > 0 || !ordersEnabled || !quantityValid} className="btn-neon w-full">
+        <button
+          type="submit"
+          disabled={busy || shortBy > 0 || !ordersEnabled || !quantityValid}
+          className="btn-neon w-full"
+        >
           <ShoppingCart aria-hidden className="size-4" />
           {busy ? "Placing order…" : `Place an order · ${formatBdt(total)}`}
         </button>
