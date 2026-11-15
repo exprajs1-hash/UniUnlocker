@@ -144,14 +144,22 @@ function StatCard({
 
 function OrderCard({ order }: { order: RentOrderDTO }) {
   return (
-    <li className="neon-card p-4 sm:p-5">
+    // The whole card opens the order: the title link is stretched over it; the result box sits above it so copying still works.
+    <li className="neon-card neon-card-hover group p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted">
             Order <span className="font-semibold text-foreground">#{order.id.slice(-6).toUpperCase()}</span> ·{" "}
             <RelativeTime iso={order.createdAt} />
           </p>
-          <h3 className="mt-0.5 font-semibold wrap-break-word">{order.serviceName}</h3>
+          <h3 className="mt-0.5 font-semibold wrap-break-word">
+            <Link
+              href={`/account/orders/${order.id}`}
+              className="after:absolute after:inset-0 after:rounded-[inherit] group-hover:text-cyan focus-visible:outline-none"
+            >
+              {order.serviceName}
+            </Link>
+          </h3>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="font-semibold text-cyan tabular-nums">
@@ -172,12 +180,19 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
         </dl>
       )}
       {order.status === "completed" ? (
-        <OrderResult text={order.result} />
+        <div className="relative z-10">
+          <OrderResult text={order.result} />
+        </div>
       ) : order.result ? (
         <p className="mt-2 text-sm whitespace-pre-line text-muted">{order.result}</p>
       ) : OPEN_STATUSES.includes(order.status) ? (
         <p className="mt-2 text-sm text-muted">Your rent details will appear here as soon as they are ready.</p>
       ) : null}
+      <p className="mt-3 flex justify-end">
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-cyan group-hover:underline">
+          View details <ArrowRight aria-hidden className="size-3.5" />
+        </span>
+      </p>
     </li>
   );
 }

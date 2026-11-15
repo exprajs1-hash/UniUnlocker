@@ -26,7 +26,10 @@ export interface IRentOrder {
   providerStatus: string;
   /** Set when the admin changed the status or result by hand. */
   manualAt: Date | null;
+  /** Each status the order went through and when, for the customer's order timeline. */
+  statusHistory: { status: RentOrderStatus; at: Date }[];
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const RentOrderSchema = new Schema<IRentOrder>(
@@ -49,6 +52,10 @@ const RentOrderSchema = new Schema<IRentOrder>(
     checkError: { type: String, default: "" },
     providerStatus: { type: String, default: "" },
     manualAt: { type: Date, default: null },
+    statusHistory: {
+      type: [{ _id: false, status: { type: String, enum: RENT_ORDER_STATUSES }, at: Date }],
+      default: [],
+    },
   },
   { timestamps: true, minimize: false },
 );

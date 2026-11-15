@@ -272,6 +272,13 @@ export interface RentOrderDTO {
   createdAt: string;
 }
 
+/** One order with its timeline, for the customer's order details page. */
+export interface RentOrderDetailDTO extends RentOrderDTO {
+  updatedAt: string;
+  /** Status changes, oldest first. Orders from before history was kept get a best-effort timeline. */
+  history: { status: RentOrderStatus; at: string }[];
+}
+
 /** A customer's order totals for the account dashboard. */
 export interface RentOrderStatsDTO {
   total: number;

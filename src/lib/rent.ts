@@ -27,6 +27,7 @@ import type {
   PublicRentServiceDTO,
   RentConfigDTO,
   RentLastOrderDTO,
+  RentOrderDetailDTO,
   RentOrderDTO,
   RentOrderStatus,
 } from "@/types";
@@ -152,7 +153,7 @@ export async function refundOrder(
 ): Promise<boolean> {
   const order = await RentOrder.findOneAndUpdate(
     allowCompleted ? { _id: orderId, refunded: false } : { _id: orderId, refunded: false, status: { $ne: "completed" } },
-    { $set: { refunded: true, status } },
+    { $set: { refunded: true, status }, $push: { statusHistory: { status, at: new Date() } } },
     { returnDocument: "after" },
   ).lean();
   if (!order) return false;
@@ -177,6 +178,18 @@ export function toOrderDTO(doc: Omit<IRentOrder, "customer"> & { _id: unknown })
     refunded: doc.refunded,
     createdAt: new Date(doc.createdAt).toISOString(),
   };
+}
+
+export function toOrderDetailDTO(doc: Omit<IRentOrder, "customer"> & { _id: unknown }): RentOrderDetailDTO {
+  const createdAt = new Date(doc.createdAt);
+  const updatedAt = new Date(doc.updatedAt ?? doc.createdAt);
+  let history = (doc.statusHistory ?? []).map((entry) => ({ status: entry.status, at: new Date(entry.at).toISOString() }));
+  if (history.length === 0) {
+    // Orders placed before history was kept: placed at creation, current status at the last update.
+    history = [{ status: "pending", at: createdAt.toISOString() }];
+    if (doc.status !== "pending" && doc.status !== "submitting") history.push({ status: doc.status, at: updatedAt.toISOString() });
+  }
+  return { ...toOrderDTO(doc), updatedAt: updatedAt.toISOString(), history };
 }
 
 const MAX_FIELD_LENGTH = 300;
@@ -266,6 +279,7 @@ export async function placeOrder(
     costUsd: service.costUsd * quantity,
     fields,
     status: "submitting",
+    statusHistory: [{ status: "submitting", at: new Date() }],
   });
 
   try {
@@ -282,6 +296,7 @@ export async function placeOrder(
     const reference = await placeProviderOrder(credentials, service.serviceId, customFields, quantity, imei);
     order.providerOrderId = reference;
     order.status = "pending";
+    order.statusHistory.push({ status: "pending", at: new Date() });
     await order.save();
     return { order: toOrderDTO(order.toObject()), balance, message: "Order placed. Your rent details will appear here shortly." };
   } catch (error) {
@@ -340,10 +355,17 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
       $set: { result: status.result || "The order was rejected.", checkError: "", providerStatus: status.raw },
     });
     await refundOrder(id, "rejected", `Refund: ${order.serviceName}`);
+  } else if (status.state !== order.status) {
+    // Guarded on the status we read, so the history entry is only added once.
+    await RentOrder.updateOne(
+      { _id: id, status: order.status },
+      {
+        $set: { status: status.state, result: status.result, checkError: "", providerStatus: status.raw },
+        $push: { statusHistory: { status: status.state, at: new Date() } },
+      },
+    );
   } else {
-    await RentOrder.updateOne(open, {
-      $set: { status: status.state, result: status.result, checkError: "", providerStatus: status.raw },
-    });
+    await RentOrder.updateOne(open, { $set: { result: status.result, checkError: "", providerStatus: status.raw } });
   }
   return { checked: true, ok: true, state: status.state, raw: status.raw };
 }
@@ -406,7 +428,10 @@ export async function updateOrderManually(orderId: string, update: ManualUpdate)
     return { refunded: true };
   }
 
-  const saved = await RentOrder.updateOne(guard, { $set: { ...changes, status: update.status } });
+  const saved = await RentOrder.updateOne(guard, {
+    $set: { ...changes, status: update.status },
+    ...(update.status !== order.status ? { $push: { statusHistory: { status: update.status, at: now } } } : {}),
+  });
   if (saved.matchedCount === 0) throw new ApiError(409, "This order just changed. Reload and try again.");
   return { refunded: false };
 }
