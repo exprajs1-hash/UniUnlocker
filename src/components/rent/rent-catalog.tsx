@@ -153,7 +153,7 @@ export function RentCatalog() {
                 <Icon aria-hidden className="size-4 shrink-0" />
                 <span className="flex items-center gap-1.5">
                   <span className="truncate">{RENT_CATEGORY_LABELS[value]}</span>
-                  <span className={`rounded-full px-1.5 text-[0.65rem] sm:text-xs ${selected ? "bg-white/20" : "bg-white/5"}`}>
+                  <span className={`rounded-full px-1.5 text-[0.65rem] sm:text-xs ${selected ? "bg-white/20" : "bg-glass/5"}`}>
                     {count}
                   </span>
                 </span>

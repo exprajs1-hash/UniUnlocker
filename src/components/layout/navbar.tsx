@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BrandIcon } from "@/components/ui/social-icons";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { UtilityLink } from "@/types";
 
 const LINKS = [
@@ -108,7 +109,7 @@ function HoverMenu({
             transition={{ duration: 0.15 }}
             className="absolute top-full right-0 z-50 pt-2"
           >
-            <div className="rounded-2xl border border-line/60 bg-surface/95 p-2 shadow-[0_8px_30px_rgb(0_0_0/0.5)] backdrop-blur-md">
+            <div className="rounded-2xl border border-line/60 bg-surface/95 p-2 shadow-(--menu-shadow) backdrop-blur-md">
               {children(() => setOpen(false))}
             </div>
           </motion.div>
@@ -239,7 +240,7 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
   const linkClass = (id: string) =>
     `rounded-lg px-3.5 py-2 text-sm font-medium transition ${
       onHome && active === id
-        ? "bg-linear-to-r from-primary to-[#00b4ff] shadow-[0_0_16px_rgb(8_123_255/0.6)]"
+        ? "bg-linear-to-r from-primary to-[#00b4ff] text-white shadow-[0_0_16px_rgb(8_123_255/0.6)]"
         : "text-foreground/85 hover:text-cyan"
     }`;
 
@@ -275,6 +276,7 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
           <div className="hidden xl:block">
             <ToolRentBadge />
           </div>
+          <ThemeToggle className="flex size-10 items-center justify-center rounded-full border border-line/60 transition hover:border-cyan hover:text-cyan" />
           <div className="hidden sm:block">
             <AccountLink />
           </div>

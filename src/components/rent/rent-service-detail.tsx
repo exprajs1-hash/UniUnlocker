@@ -87,7 +87,7 @@ export function RentServiceDetail({ id }: { id: string }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
               href="/rent"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium hover:bg-white/10"
+              className="inline-flex items-center gap-1.5 rounded-full border border-glass/20 bg-glass/5 px-3 py-1.5 text-xs font-medium hover:bg-glass/10"
             >
               <ArrowLeft aria-hidden className="size-3.5" /> Back to Tools Rent
             </Link>
@@ -95,7 +95,7 @@ export function RentServiceDetail({ id }: { id: string }) {
               <Chip className="bg-status-online/15 text-status-online">
                 <span aria-hidden className="size-1.5 rounded-full bg-status-online" /> Active
               </Chip>
-              <Chip className="bg-white/10 text-foreground">
+              <Chip className="bg-glass/10 text-foreground">
                 <Tag aria-hidden className="size-3" /> Best price
               </Chip>
             </div>
@@ -116,7 +116,7 @@ export function RentServiceDetail({ id }: { id: string }) {
             </div>
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-white/15 bg-background/40 p-4">
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-glass/15 bg-background/40 p-4">
             <div>
               <p className="text-xs font-semibold tracking-widest text-muted uppercase">Service price</p>
               <p className="font-display text-3xl font-bold text-neon">

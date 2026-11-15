@@ -166,7 +166,7 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
             {formatBdt(order.priceBdt)}
             {order.quantity > 1 && <span className="text-xs font-normal text-muted"> · qty {order.quantity}</span>}
           </span>
-          <OrderStatusBadge status={order.status} refunded={order.refunded} />
+          <OrderStatusBadge status={order.status} refunded={order.refunded} customer />
         </div>
       </div>
       {Object.keys(order.fields).length > 0 && (

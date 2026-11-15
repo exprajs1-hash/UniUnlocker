@@ -46,12 +46,24 @@ export const ORDER_STATUS_LABELS: Record<RentOrderStatus, string> = Object.fromE
   Object.entries(STATUS_STYLE).map(([key, value]) => [key, value.label]),
 ) as Record<RentOrderStatus, string>;
 
-export function OrderStatusBadge({ status, refunded }: { status: RentOrderStatus; refunded?: boolean }) {
-  const style = STATUS_STYLE[status];
+/**
+ * `customer` shows "failed" as "Rejected": to the customer both mean the order was not delivered
+ * (and refunded). The admin panel keeps them apart, since "failed" points at our side.
+ */
+export function OrderStatusBadge({
+  status,
+  refunded,
+  customer = false,
+}: {
+  status: RentOrderStatus;
+  refunded?: boolean;
+  customer?: boolean;
+}) {
+  const style = STATUS_STYLE[customer && status === "failed" ? "rejected" : status];
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${style.className}`}>{style.label}</span>
-      {refunded && <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold">Refunded</span>}
+      {refunded && <span className="rounded-full bg-glass/10 px-2.5 py-0.5 text-xs font-semibold">Refunded</span>}
     </span>
   );
 }
@@ -82,7 +94,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       onClick={() => void copy()}
       aria-label={copied ? "Copied" : label}
       title={copied ? "Copied" : label}
-      className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-white/10"
+      className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-glass/10"
     >
       {copied ? <Check aria-hidden className="size-4 text-status-online" /> : <Copy aria-hidden className="size-4" />}
     </button>
@@ -99,9 +111,9 @@ export function OrderResult({ text }: { text: string }) {
   const labelled = lines.some((line) => line.label !== null);
 
   return (
-    <div className="mt-2 rounded-lg border border-white/10 bg-black/30 p-2">
+    <div className="mt-2 rounded-lg border border-glass/10 bg-background/60 p-2">
       {lines.length > 1 && labelled && (
-        <div className="flex justify-end border-b border-white/10 pb-1">
+        <div className="flex justify-end border-b border-glass/10 pb-1">
           <span className="inline-flex items-center gap-1 text-xs opacity-70">
             Copy all values <CopyButton value={lines.map((line) => line.value).join("\n")} label="Copy all values" />
           </span>
@@ -109,7 +121,7 @@ export function OrderResult({ text }: { text: string }) {
       )}
       <ul className="font-mono text-sm">
         {lines.map((line, index) => (
-          <li key={index} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-white/5">
+          <li key={index} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-glass/5">
             <span className="min-w-0 flex-1 wrap-break-word">
               {line.label !== null && <span className="opacity-60">{line.label}: </span>}
               <span className="select-all">{line.value}</span>

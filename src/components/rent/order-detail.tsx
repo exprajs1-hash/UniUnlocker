@@ -74,10 +74,12 @@ function buildSteps(order: RentOrderDetailDTO): Step[] {
   const steps: Step[] = [{ label: "Order placed", at: placedAt, icon: Clock, state: "done" }];
 
   if (order.status === "rejected" || order.status === "failed") {
-    if (first(["processing"])) steps.push({ label: "Processing", at: first(["processing"]), icon: Loader, state: "done" });
+    // Customers see one outcome for both: it went to processing, then was rejected (and refunded).
+    const rejectedAt = finalAt ?? order.updatedAt;
+    steps.push({ label: "Processing", at: first(["processing"]) ?? rejectedAt, icon: Loader, state: "done" });
     steps.push({
-      label: order.status === "rejected" ? "Rejected" : "Failed",
-      at: finalAt ?? order.updatedAt,
+      label: "Rejected",
+      at: rejectedAt,
       icon: X,
       state: "failed",
       note: order.refunded ? `${formatBdt(order.priceBdt)} returned to your balance.` : undefined,
@@ -223,7 +225,7 @@ export function OrderDetail({ id }: { id: string }) {
             {order.quantity > 1 && <span className="ml-2 text-xs font-normal text-muted">× {order.quantity}</span>}
           </Row>
           <Row icon={ListChecks} label="Order status">
-            <OrderStatusBadge status={order.status} refunded={order.refunded} />
+            <OrderStatusBadge status={order.status} refunded={order.refunded} customer />
           </Row>
         </dl>
       </section>

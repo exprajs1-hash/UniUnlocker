@@ -141,7 +141,7 @@ export function RentOrdersManager() {
                     <span className="inline-flex flex-wrap items-center gap-1.5">
                       <OrderStatusBadge status={order.status} refunded={order.refunded} />
                       {order.manualAt && (
-                        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold" title={`Updated by hand ${order.manualAt}`}>
+                        <span className="rounded-full bg-glass/10 px-2.5 py-0.5 text-xs font-semibold" title={`Updated by hand ${order.manualAt}`}>
                           Manual
                         </span>
                       )}

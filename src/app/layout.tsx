@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Great_Vibes, Inter, Sora } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { SEO_KEYWORDS, SITE_URL } from "@/lib/seo";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const body = Inter({ variable: "--font-body", subsets: ["latin"] });
@@ -34,7 +35,15 @@ export const viewport: Viewport = { themeColor: "#030817" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${body.variable} ${heading.variable} ${signature.variable} h-full antialiased`}>
+    // suppressHydrationWarning: the theme script may set data-theme on <html> before React hydrates.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${body.variable} ${heading.variable} ${signature.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <ToastProvider>{children}</ToastProvider>
       </body>

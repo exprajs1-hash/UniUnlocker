@@ -27,6 +27,60 @@
   --admin-line: #273046;
   --admin-text: #e7ebf3;
   --admin-muted: #94a0b8;
+
+  /* Overlays and surfaces that differ by theme. `--glass` is the tint for subtle
+     fills and borders (bg-glass/10): white on dark, navy on light. */
+  --glass: #ffffff;
+  --card-bg: linear-gradient(160deg, rgb(11 31 69 / 0.85), rgb(5 14 36 / 0.92));
+  --card-shadow: 0 0 18px rgb(8 123 255 / 0.18), inset 0 0 22px rgb(0 229 255 / 0.05);
+  --card-shadow-hover: 0 0 30px rgb(0 229 255 / 0.32), inset 0 0 26px rgb(0 229 255 / 0.08);
+  --input-bg: rgb(3 8 23 / 0.7);
+  --placeholder: rgb(169 184 214 / 0.6);
+  --outline-btn-border: rgb(255 255 255 / 0.55);
+  --outline-btn-bg: rgb(3 8 23 / 0.45);
+  --skeleton: 120 160 230;
+  --backdrop: rgb(2 6 18 / 0.75);
+  --menu-shadow: 0 8px 30px rgb(0 0 0 / 0.5);
+  --neon-glow: 0 0 22px rgb(0 229 255 / 0.45);
+  color-scheme: dark;
+}
+
+/* Light theme: chosen with the header toggle, saved per visitor (see ThemeToggle). */
+:root[data-theme="light"] {
+  --background: #f3f6fc;
+  --surface: #ffffff;
+  --surface-raised: #e9eff9;
+  --primary: #0a6ee6;
+  --cyan: #0284a8;
+  --purple: #6a28e0;
+  --foreground: #0b1630;
+  --muted: #4a5875;
+  --line: rgb(10 110 230 / 0.28);
+
+  --status-online: #0f9d48;
+  --status-offline: #dc2638;
+  --status-maintenance: #c26a00;
+
+  --admin-bg: #f3f5f9;
+  --admin-panel: #ffffff;
+  --admin-raised: #eef1f6;
+  --admin-line: #d9dfea;
+  --admin-text: #111827;
+  --admin-muted: #5b6577;
+
+  --glass: #0b1f45;
+  --card-bg: linear-gradient(160deg, rgb(255 255 255 / 0.96), rgb(244 248 255 / 0.96));
+  --card-shadow: 0 1px 2px rgb(15 35 80 / 0.06), 0 6px 20px rgb(10 110 230 / 0.08);
+  --card-shadow-hover: 0 10px 30px rgb(10 110 230 / 0.18);
+  --input-bg: #ffffff;
+  --placeholder: rgb(74 88 117 / 0.6);
+  --outline-btn-border: rgb(11 31 69 / 0.25);
+  --outline-btn-bg: rgb(255 255 255 / 0.85);
+  --skeleton: 100 130 190;
+  --backdrop: rgb(15 23 42 / 0.45);
+  --menu-shadow: 0 10px 30px rgb(15 35 80 / 0.15);
+  --neon-glow: none;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -48,6 +102,7 @@
   --color-admin-line: var(--admin-line);
   --color-admin-text: var(--admin-text);
   --color-admin-muted: var(--admin-muted);
+  --color-glass: var(--glass);
   --font-sans: var(--font-body);
   --font-display: var(--font-heading);
   --font-signature: var(--font-signature);
@@ -75,6 +130,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 :focus-visible {
@@ -83,7 +141,7 @@ body {
 }
 
 dialog::backdrop {
-  background: rgb(2 6 18 / 0.75);
+  background: var(--backdrop);
   backdrop-filter: blur(4px);
 }
 
@@ -97,15 +155,21 @@ dialog::backdrop {
       radial-gradient(60rem 34rem at 100% 62%, rgb(0 229 255 / 0.13), transparent 70%),
       radial-gradient(50rem 30rem at 0% 88%, rgb(8 123 255 / 0.2), transparent 70%), var(--background);
   }
+  /* Light: the same layout with softer glows; the neon line art is left out, it is drawn for a dark page. */
+  :root[data-theme="light"] .site-bg {
+    background:
+      radial-gradient(60rem 30rem at 85% 8%, rgb(10 110 230 / 0.12), transparent 70%),
+      radial-gradient(45rem 30rem at -5% 30%, rgb(106 40 224 / 0.08), transparent 70%),
+      radial-gradient(60rem 34rem at 100% 62%, rgb(2 132 168 / 0.08), transparent 70%),
+      radial-gradient(50rem 30rem at 0% 88%, rgb(10 110 230 / 0.1), transparent 70%), var(--background);
+  }
 
   .neon-card {
     position: relative;
     border: 1px solid var(--line);
     border-radius: 1rem;
-    background: linear-gradient(160deg, rgb(11 31 69 / 0.85), rgb(5 14 36 / 0.92));
-    box-shadow:
-      0 0 18px rgb(8 123 255 / 0.18),
-      inset 0 0 22px rgb(0 229 255 / 0.05);
+    background: var(--card-bg);
+    box-shadow: var(--card-shadow);
     transition:
       transform 0.25s ease,
       border-color 0.25s ease,
@@ -123,9 +187,7 @@ dialog::backdrop {
   .neon-card-hover:hover {
     transform: translateY(-4px);
     border-color: var(--cyan);
-    box-shadow:
-      0 0 30px rgb(0 229 255 / 0.32),
-      inset 0 0 26px rgb(0 229 255 / 0.08);
+    box-shadow: var(--card-shadow-hover);
   }
 
   .btn-neon,
@@ -147,6 +209,10 @@ dialog::backdrop {
   .btn-neon {
     background: linear-gradient(100deg, var(--primary), #00b4ff);
     box-shadow: 0 0 22px rgb(8 123 255 / 0.55);
+    color: #fff;
+  }
+  :root[data-theme="light"] .btn-neon {
+    box-shadow: 0 4px 14px rgb(10 110 230 / 0.3);
   }
   .btn-neon:hover {
     transform: translateY(-2px);
@@ -158,8 +224,8 @@ dialog::backdrop {
     transform: none;
   }
   .btn-outline {
-    border: 1px solid rgb(255 255 255 / 0.55);
-    background: rgb(3 8 23 / 0.45);
+    border: 1px solid var(--outline-btn-border);
+    background: var(--outline-btn-bg);
   }
   .btn-outline:hover {
     border-color: var(--cyan);
@@ -170,7 +236,7 @@ dialog::backdrop {
     width: 100%;
     border: 1px solid var(--line);
     border-radius: 0.75rem;
-    background: rgb(3 8 23 / 0.7);
+    background: var(--input-bg);
     padding: 0.7rem 0.9rem;
     color: var(--foreground);
     transition:
@@ -178,7 +244,7 @@ dialog::backdrop {
       box-shadow 0.2s ease;
   }
   .neon-input::placeholder {
-    color: rgb(169 184 214 / 0.6);
+    color: var(--placeholder);
   }
   .neon-input:focus {
     border-color: var(--cyan);
@@ -188,16 +254,16 @@ dialog::backdrop {
 
   .text-neon {
     color: var(--cyan);
-    text-shadow: 0 0 22px rgb(0 229 255 / 0.45);
+    text-shadow: var(--neon-glow);
   }
 
   .skeleton {
     border-radius: 0.5rem;
     background: linear-gradient(
       100deg,
-      rgb(120 160 230 / 0.08) 30%,
-      rgb(120 160 230 / 0.2) 50%,
-      rgb(120 160 230 / 0.08) 70%
+      rgb(var(--skeleton) / 0.08) 30%,
+      rgb(var(--skeleton) / 0.2) 50%,
+      rgb(var(--skeleton) / 0.08) 70%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s linear infinite;
@@ -299,6 +365,10 @@ dialog::backdrop {
   background-clip: text;
   color: transparent;
   animation: gradient-flow 6s linear infinite;
+}
+
+:root[data-theme="light"] .text-gradient-flow {
+  background-image: linear-gradient(90deg, #0284a8, #0a6ee6, #8b2be2, #0284a8);
 }
 
 @keyframes gradient-flow {

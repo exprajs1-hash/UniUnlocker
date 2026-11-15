@@ -23,6 +23,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { OnlineToggle } from "@/components/admin/online-toggle";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
 
@@ -122,6 +123,7 @@ export function AdminShell({ email, children }: { email: string; children: React
           <span className="shrink-0">
             <OnlineToggle />
           </span>
+          <ThemeToggle className="admin-icon-btn shrink-0" />
           <button type="button" onClick={signOut} disabled={signingOut} className="admin-btn admin-btn-secondary shrink-0">
             <LogOut aria-hidden className="size-4" /> Sign out
           </button>
