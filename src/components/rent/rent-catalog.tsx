@@ -3,7 +3,6 @@
 import {
   ArrowRight,
   Clock,
-  Headphones,
   KeyRound,
   LayoutGrid,
   List,
@@ -12,7 +11,6 @@ import {
   Search,
   Server,
   Smartphone,
-  Sparkles,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -52,6 +50,59 @@ function DeliveryBadge({ text }: { text: string }) {
     <span className="inline-flex items-center gap-1 rounded-lg bg-cyan/10 px-2 py-1 text-xs font-medium whitespace-nowrap text-cyan">
       <Clock aria-hidden className="size-3" /> {text}
     </span>
+  );
+}
+
+/** Per-tab header copy: "Premium <highlight> Services" plus a one-line description. */
+const HERO: Record<RentCategory, { highlight: string; subtitle: string }> = {
+  rent: {
+    highlight: "Tools Rent",
+    subtitle: "Rent premium unlock and repair tools by the hour. Login details are delivered fast and paid from your balance.",
+  },
+  imei: {
+    highlight: "IMEI",
+    subtitle: "Official IMEI unlock, check and repair services for every major brand. Fast delivery, guaranteed results.",
+  },
+  server: {
+    highlight: "Server",
+    subtitle: "Server credits, activations and remote services, processed quickly and paid straight from your balance.",
+  },
+};
+
+function ServicesHero({ category, count }: { category: RentCategory; count: number | null }) {
+  const { highlight, subtitle } = HERO[category];
+  const Icon = CATEGORY_ICONS[category];
+  const stats = [
+    { value: count === null ? "—" : String(count), label: "Services" },
+    { value: "24/7", label: "Support" },
+    { value: "100%", label: "Satisfaction" },
+  ];
+  return (
+    <section className="neon-card relative mb-6 overflow-hidden px-5 py-8 text-center sm:px-8 sm:py-10">
+      {/* Soft colour glows behind the text. */}
+      <span aria-hidden className="pointer-events-none absolute -top-16 -left-16 size-56 rounded-full bg-purple/20 blur-3xl" />
+      <span aria-hidden className="pointer-events-none absolute -right-16 -bottom-20 size-64 rounded-full bg-primary/20 blur-3xl" />
+
+      {/* Keyed on the tab so the copy animates in again on every switch. */}
+      <div key={category} className="relative motion-safe:animate-[hero-in_0.45s_ease-out]">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-purple/30 bg-purple/10 px-3 py-1 text-xs font-semibold text-purple">
+          <Icon aria-hidden className="size-3.5" />
+          {count === null ? "Premium services" : `${count}${count >= 10 ? "+" : ""} Premium Services Available`}
+        </span>
+        <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl">
+          Premium <span className="text-gradient-flow">{highlight}</span> Services
+        </h1>
+        <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-muted sm:text-base">{subtitle}</p>
+        <ul className="mt-6 flex flex-wrap justify-center gap-3">
+          {stats.map(({ value, label }) => (
+            <li key={label} className="min-w-24 rounded-xl border border-line/40 bg-background/50 px-4 py-2.5 backdrop-blur-sm">
+              <p className="font-display text-2xl font-extrabold text-primary tabular-nums">{value}</p>
+              <p className="text-[11px] font-bold tracking-wider text-muted uppercase">{label}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -128,6 +179,8 @@ export function RentCatalog() {
 
   return (
     <div>
+      <ServicesHero category={activeCategory} count={services ? inCategory.length : null} />
+
       {/* Sections */}
       {services !== null && (
         <div
@@ -162,30 +215,6 @@ export function RentCatalog() {
           })}
         </div>
       )}
-
-      {/* Summary */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
-        {[
-          {
-            icon: Sparkles,
-            value: services ? String(inCategory.length) : "—",
-            label: "Services",
-          },
-          { icon: Headphones, value: "24/7", label: "Support" },
-          { icon: Clock, value: "Fast", label: "Delivery" },
-        ].map(({ icon: Icon, value, label }) => (
-          <div
-            key={label}
-            className="neon-card flex flex-col items-center gap-1 p-3 text-center sm:flex-row sm:gap-3 sm:p-4 sm:text-left"
-          >
-            <Icon aria-hidden className="size-5 text-cyan" />
-            <div>
-              <p className="font-display text-lg font-bold sm:text-xl">{value}</p>
-              <p className="text-xs text-muted">{label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Search + filters */}
       <div className="mb-3 flex items-center gap-2 sm:gap-3">
@@ -281,9 +310,9 @@ export function RentCatalog() {
                 <Link href={`/services/${service.id}`} className="flex items-center gap-3 p-3 transition hover:bg-primary/5">
                   <ToolIcon src={service.icon} name={service.name} size={40} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug font-semibold">{service.name}</p>
+                    <p className="text-[15px] leading-snug font-bold">{service.name}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs text-muted">#{service.code}</span>
+                      <span className="text-[13px] font-semibold text-muted">#{service.code}</span>
                       <DeliveryBadge text={service.deliveryTime} />
                       {service.minQuantity > 1 && <MinQtyBadge value={service.minQuantity} />}
                     </div>
@@ -329,10 +358,10 @@ export function RentCatalog() {
                       <ToolIcon src={service.icon} name={service.name} size={36} />
                     </td>
                     <td className="px-2 py-3">
-                      <Link href={`/services/${service.id}`} className="font-semibold hover:text-cyan">
+                      <Link href={`/services/${service.id}`} className="text-[15px] leading-snug font-bold hover:text-cyan sm:text-base">
                         {service.name}
                       </Link>
-                      <p className="text-xs text-muted">ID: #{service.code}</p>
+                      <p className="mt-0.5 text-[13px] font-semibold text-muted">ID: #{service.code}</p>
                     </td>
                     <td className="px-2 py-3">
                       <DeliveryBadge text={service.deliveryTime} />
@@ -362,8 +391,8 @@ export function RentCatalog() {
                   {service.group && (
                     <p className="truncate text-xs font-semibold tracking-wide text-cyan uppercase">{service.group}</p>
                   )}
-                  <h2 className="font-display font-bold">{service.name}</h2>
-                  <p className="text-xs text-muted">ID: #{service.code}</p>
+                  <h2 className="font-display text-lg leading-snug font-extrabold">{service.name}</h2>
+                  <p className="text-[13px] font-semibold text-muted">ID: #{service.code}</p>
                 </div>
               </div>
               <div className="mt-3 flex flex-1 flex-wrap items-start gap-2">

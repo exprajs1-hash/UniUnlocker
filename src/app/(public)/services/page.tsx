@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { RentCatalog } from "@/components/rent/rent-catalog";
-import { SectionHeading } from "@/components/sections/section-heading";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -11,11 +10,9 @@ export const metadata: Metadata = {
 
 export default function ServicesPage() {
   return (
-    <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
-      <SectionHeading lead="Our" highlight="Services" subtitle="Tool rent, IMEI and server services, paid from your balance" />
-      <div className="mt-10">
-        <RentCatalog />
-      </div>
+    <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+      {/* The catalog renders the page header (h1), since its title and counts follow the selected tab. */}
+      <RentCatalog />
     </div>
   );
 }

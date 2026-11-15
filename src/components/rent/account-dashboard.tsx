@@ -131,10 +131,10 @@ function StatCard({
         <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${style.tile}`}>
           <Icon aria-hidden className="size-4.5" />
         </span>
-        <p className="text-[11px] leading-tight font-semibold tracking-wide text-muted uppercase">{label}</p>
+        <p className="text-xs leading-tight font-bold tracking-wide text-muted uppercase sm:text-[13px]">{label}</p>
       </div>
-      <p className="mt-3 font-display text-2xl font-bold tabular-nums">{value}</p>
-      <p className="text-xs text-muted">{hint}</p>
+      <p className="mt-3 font-display text-3xl font-extrabold tabular-nums">{value}</p>
+      <p className="text-sm font-semibold text-muted">{hint}</p>
       {children}
     </div>
   );
@@ -148,11 +148,11 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
     <li className="neon-card neon-card-hover group p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted">
-            Order <span className="font-semibold text-foreground">#{order.id.slice(-6).toUpperCase()}</span> ·{" "}
+          <p className="text-[13px] font-medium text-muted">
+            Order <span className="font-bold text-foreground">#{order.id.slice(-6).toUpperCase()}</span> ·{" "}
             <RelativeTime iso={order.createdAt} />
           </p>
-          <h3 className="mt-0.5 font-semibold wrap-break-word">
+          <h3 className="mt-0.5 text-lg leading-snug font-extrabold wrap-break-word">
             <Link
               href={`/account/orders/${order.id}`}
               className="after:absolute after:inset-0 after:rounded-[inherit] group-hover:text-cyan focus-visible:outline-none"
@@ -162,7 +162,7 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
           </h3>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="font-semibold text-cyan tabular-nums">
+          <span className="text-lg font-extrabold text-cyan tabular-nums">
             {formatBdt(order.priceBdt)}
             {order.quantity > 1 && <span className="text-xs font-normal text-muted"> · qty {order.quantity}</span>}
           </span>
