@@ -65,10 +65,12 @@ async function call(
   credentials: ProviderCredentials,
   action: string,
   parameters?: string,
+  /** Extra top-level form fields, for panels that read values outside `parameters`. */
+  extra: Record<string, string> = {},
 ): Promise<Record<string, unknown>> {
   const { url, username, key, useProxy } = credentials;
   if (!url || !username || !key) throw new ProviderUnavailableError("This provider is missing its API URL, username or key.");
-  const body = new URLSearchParams({ username, apiaccesskey: key, action, requestformat: "JSON" });
+  const body = new URLSearchParams({ ...extra, username, apiaccesskey: key, action, requestformat: "JSON" });
   if (parameters) body.set("parameters", parameters);
   const dispatcher = useProxy ? getProxyAgent() : undefined;
 
@@ -288,9 +290,57 @@ export function parseProviderState(raw: string): ProviderOrderState {
   return "pending";
 }
 
+type StatusRequest = { parameters: string; extra?: Record<string, string> };
+
+/**
+ * Ways panels expect the order id on "getimeiorder". Standard DHRU first; some
+ * GSM-THEME panels answer "Missing Order ID" to it, so the others are tried next.
+ */
+function statusRequests(referenceId: string): StatusRequest[] {
+  const id = escapeXml(referenceId);
+  const fields = { id: referenceId, ID: referenceId, orderid: referenceId, ORDERID: referenceId, order_id: referenceId };
+  return [
+    { parameters: `<PARAMETERS><ID>${id}</ID></PARAMETERS>` },
+    {
+      parameters: `<PARAMETERS><ID>${id}</ID><ORDERID>${id}</ORDERID><REFERENCEID>${id}</REFERENCEID></PARAMETERS>`,
+      extra: fields,
+    },
+    { parameters: JSON.stringify({ ID: referenceId, ORDERID: referenceId, REFERENCEID: referenceId }), extra: fields },
+    { parameters: Buffer.from(`<PARAMETERS><ID>${id}</ID></PARAMETERS>`, "utf8").toString("base64"), extra: fields },
+  ];
+}
+
+/** Which status request format each provider URL accepted, so later checks go straight to it. */
+const workingStatusRequest = new Map<string, number>();
+
+const MISSING_INPUT = /missing|required|not (found|provided)|empty/i;
+
 /** DHRU status codes: 0 new, 1 in process, 3 rejected, 4 completed. */
 export async function getProviderOrder(credentials: ProviderCredentials, referenceId: string): Promise<ProviderOrderStatus> {
-  const result = await call(credentials, "getimeiorder", `<PARAMETERS><ID>${escapeXml(referenceId)}</ID></PARAMETERS>`);
+  const requests = statusRequests(referenceId);
+  const known = workingStatusRequest.get(credentials.url);
+  const order = known === undefined ? requests.map((_, index) => index) : [known, ...requests.map((_, index) => index).filter((index) => index !== known)];
+
+  let result: Record<string, unknown> | null = null;
+  let lastError: unknown = null;
+  for (const index of order) {
+    try {
+      result = await call(credentials, "getimeiorder", requests[index].parameters, requests[index].extra);
+      if (known !== index) {
+        workingStatusRequest.set(credentials.url, index);
+        if (index > 0) console.log(`[rent] ${credentials.url} accepted status request format #${index + 1}`);
+      }
+      break;
+    } catch (error) {
+      lastError = error;
+      // Only an "input missing" refusal means the format was wrong; anything else is a real answer.
+      if (!(error instanceof ProviderRejectedError) || !MISSING_INPUT.test(error.message)) throw error;
+    }
+  }
+  if (!result) {
+    throw new ProviderRejectedError(`${(lastError as Error).message} (tried ${requests.length} request formats)`);
+  }
+
   const raw = String(pick(result, "STATUS", "ORDERSTATUS") ?? "");
   const code = resultText(pick(result, "CODE", "RESULT", "COMMENTS"));
   return { state: parseProviderState(raw), result: code, raw };
