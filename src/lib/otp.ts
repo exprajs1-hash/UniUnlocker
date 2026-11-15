@@ -3,12 +3,13 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { ApiError } from "@/lib/api";
 import { sendMail } from "@/lib/mailer";
 import { connectToDatabase } from "@/lib/mongodb";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeRateLimit, refundRateLimit } from "@/lib/rate-limit";
 import { EmailOtp, type IEmailOtp, type OtpPurpose } from "@/models/EmailOtp";
 
 const CODE_TTL_MINUTES = 10;
 const RESEND_COOLDOWN_SECONDS = 60;
 const MAX_SENDS_PER_EMAIL_PER_HOUR = 5;
+const SEND_WINDOW_SECONDS = 60 * 60;
 const MAX_WRONG_ATTEMPTS = 5;
 
 function hashCode(email: string, purpose: OtpPurpose, code: string): string {
@@ -51,7 +52,7 @@ export async function sendOtp(email: string, purpose: OtpPurpose, pending: IEmai
       throw new ApiError(429, `Please wait ${wait} seconds before asking for a new code.`, { "Retry-After": String(wait) });
     }
   }
-  const limit = await consumeRateLimit(`otp-${purpose}`, email, MAX_SENDS_PER_EMAIL_PER_HOUR, 60 * 60);
+  const limit = await consumeRateLimit(`otp-${purpose}`, email, MAX_SENDS_PER_EMAIL_PER_HOUR, SEND_WINDOW_SECONDS);
   if (!limit.allowed) {
     throw new ApiError(429, "Too many codes were sent to this email. Please try again later.", {
       "Retry-After": String(limit.retryAfter),
@@ -76,8 +77,11 @@ export async function sendOtp(email: string, purpose: OtpPurpose, pending: IEmai
   try {
     await sendMail({ to: email, ...emailBody(purpose, code) });
   } catch (error) {
-    // Not sent, so do not hold the cooldown against the customer.
-    await EmailOtp.deleteOne({ email, purpose });
+    // Not sent, so neither the cooldown nor the hourly cap is held against the customer.
+    await Promise.all([
+      EmailOtp.deleteOne({ email, purpose }),
+      refundRateLimit(`otp-${purpose}`, email, SEND_WINDOW_SECONDS),
+    ]);
     throw error;
   }
 }

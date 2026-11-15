@@ -48,6 +48,11 @@ export async function consumeRateLimit(
   return { allowed: (entry?.count ?? 1) <= limit, retryAfter };
 }
 
+/** Takes back one counted attempt, for an action that failed on our side (e.g. an email that could not be sent). */
+export async function refundRateLimit(scope: string, identifier: string, windowSeconds: number): Promise<void> {
+  await RateLimit.updateOne({ key: windowFor(scope, identifier, windowSeconds).key, count: { $gt: 0 } }, { $inc: { count: -1 } });
+}
+
 /** Clears a counter early, for example after a successful login. */
 export async function resetRateLimit(
   scope: string,
