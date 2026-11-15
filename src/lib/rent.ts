@@ -294,7 +294,8 @@ export async function placeOrder(
   }
 }
 
-const REFRESH_AFTER_MS = 45_000;
+/** Minimum gap between provider checks of one order; a little under the customer page's 10 s poll. */
+const REFRESH_AFTER_MS = 8_000;
 
 export type RefreshOutcome =
   | { checked: false; reason: "skipped" }

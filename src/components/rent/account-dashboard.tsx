@@ -31,6 +31,20 @@ import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
 import type { BalanceTransactionDTO, RentOrderDTO, RentOrderStatsDTO } from "@/types";
 
+const DATE_TIME = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
+/** e.g. "15 Nov 2026, 3:45 pm" in the viewer's time zone. */
+function formatDateTime(iso: string): string {
+  return DATE_TIME.format(new Date(iso));
+}
+
 interface Me {
   name: string;
   email: string;
@@ -38,7 +52,8 @@ interface Me {
   balance: number;
 }
 
-const POLL_MS = 20_000;
+/** While an order is open, the page refreshes itself this often so the customer never has to press Refresh. */
+const POLL_MS = 10_000;
 const RECENT_COUNT = 5;
 const OPEN_STATUSES = ["submitting", "pending", "processing"];
 
@@ -163,27 +178,30 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
   const [orders, setOrders] = useState<RentOrderDTO[] | null>(null);
   const [stats, setStats] = useState<RentOrderStatsDTO | null>(null);
   const [transactions, setTransactions] = useState<BalanceTransactionDTO[] | null>(null);
+  const [wallet, setWallet] = useState({ totalAddedBdt: 0, depositCount: 0 });
   const [tab, setTab] = useState<"orders" | "wallet">("orders");
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  /** `silent` is for the automatic refresh: no spinner flicker or error toast every few seconds. */
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [meData, orderData, txData] = await Promise.all([
         apiFetch<{ customer: Me }>("/api/me"),
         apiFetch<{ orders: RentOrderDTO[]; stats: RentOrderStatsDTO }>("/api/me/orders"),
-        apiFetch<{ transactions: BalanceTransactionDTO[] }>("/api/me/transactions"),
+        apiFetch<{ transactions: BalanceTransactionDTO[]; totalAddedBdt: number; depositCount: number }>("/api/me/transactions"),
       ]);
       setMe(meData.customer);
       setOrders(orderData.orders);
       setStats(orderData.stats);
       setTransactions(txData.transactions);
+      setWallet({ totalAddedBdt: txData.totalAddedBdt, depositCount: txData.depositCount });
     } catch (error) {
-      toast.error(errorMessage(error));
+      if (!silent) toast.error(errorMessage(error));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [toast]);
 
@@ -197,8 +215,16 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
   const hasOpen = orders?.some((order) => OPEN_STATUSES.includes(order.status)) ?? false;
   useEffect(() => {
     if (!hasOpen) return;
-    const timer = setInterval(() => void load(), POLL_MS);
-    return () => clearInterval(timer);
+    // Skip while the tab is in the background; catch up as soon as it is visible again.
+    const tick = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const timer = setInterval(tick, POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [hasOpen, load]);
 
   async function signOut() {
@@ -349,28 +375,50 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
             <p className="p-6 text-center text-muted">You have no orders yet.</p>
           )}
         </section>
-      ) : transactions && transactions.length > 0 ? (
-        <ul className="neon-card divide-y divide-line/30">
-          {transactions.map((tx) => (
-            <li key={tx.id} className="flex items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <p className="font-medium">{TRANSACTION_LABELS[tx.type]}</p>
-                <p className="truncate text-sm text-muted">
-                  {tx.note && `${tx.note} · `}
-                  <RelativeTime iso={tx.createdAt} />
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className={`font-semibold ${tx.amount > 0 ? "text-status-online" : "text-status-offline"}`}>
-                  {formatSignedBdt(tx.amount)}
-                </p>
-                <p className="text-xs text-muted">Balance {formatBdt(tx.balanceAfter)}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
       ) : (
-        <p className="neon-card p-8 text-center text-muted">No wallet activity yet.</p>
+        <section className="neon-card p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                <Wallet aria-hidden className="size-4.5" />
+              </span>
+              <div>
+                <h2 className="font-display font-semibold">Wallet history</h2>
+                <p className="text-xs text-muted">When and how much money was added to your balance</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-line/60 bg-background/40 px-4 py-2 text-right">
+              <p className="text-xs text-muted">
+                Total added{wallet.depositCount > 0 && ` · ${wallet.depositCount} time${wallet.depositCount === 1 ? "" : "s"}`}
+              </p>
+              <p className="text-lg font-bold text-status-online tabular-nums">{formatBdt(wallet.totalAddedBdt)}</p>
+            </div>
+          </div>
+          {transactions && transactions.length > 0 ? (
+            <ul className="divide-y divide-line/30">
+              {transactions.map((tx) => (
+                <li key={tx.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="font-medium">{TRANSACTION_LABELS[tx.type]}</p>
+                    <p className="inline-flex items-center gap-1.5 text-sm text-muted">
+                      <CalendarDays aria-hidden className="size-3.5 shrink-0" />
+                      {formatDateTime(tx.createdAt)} · <RelativeTime iso={tx.createdAt} />
+                    </p>
+                    {tx.note && <p className="truncate text-xs text-muted">{tx.note}</p>}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className={`font-semibold tabular-nums ${tx.amount > 0 ? "text-status-online" : "text-status-offline"}`}>
+                      {formatSignedBdt(tx.amount)}
+                    </p>
+                    <p className="text-xs text-muted">Balance {formatBdt(tx.balanceAfter)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="p-6 text-center text-muted">No money has been added to your balance yet.</p>
+          )}
+        </section>
       )}
     </div>
   );
