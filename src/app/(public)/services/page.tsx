@@ -1,39 +1,21 @@
 import type { Metadata } from "next";
-import { ListingPage, PagedResults } from "@/components/listing/listing-page";
-import { SERVICE_COLUMNS, ServiceGrid } from "@/components/sections/service-grid";
-import { getEnabledServices } from "@/lib/data";
-import { PAGE_SIZES } from "@/lib/listing-config";
-import { paginate } from "@/lib/pagination";
+import { RentCatalog } from "@/components/rent/rent-catalog";
+import { SectionHeading } from "@/components/sections/section-heading";
 
 export const metadata: Metadata = {
-  title: "All Services",
-  description: "UniUnlocker services – mobile unlocking, FRP bypass, IMEI repair and every mobile software service we offer.",
-  alternates: { canonical: "/services" },
+  title: "Services",
+  description:
+    "Tool rent, IMEI and server services for mobile unlock and repair. Pay from your UniUnlocker balance and get your result instantly.",
+  alternates: { canonical: "/rent" },
 };
 
-type Props = PageProps<"/services">;
-
-async function ServiceResults({ searchParams }: Pick<Props, "searchParams">) {
-  const services = await getEnabledServices();
-  if (services.length === 0) return <ServiceGrid services={[]} />;
-  const paged = paginate(services, (await searchParams).page, PAGE_SIZES.services);
+export default function RentPage() {
   return (
-    <PagedResults paged={paged} basePath="/services">
-      <ServiceGrid services={paged.items} />
-    </PagedResults>
-  );
-}
-
-export default function ServicesPage({ searchParams }: Props) {
-  return (
-    <ListingPage
-      backHref="/"
-      lead="All"
-      highlight="Services"
-      subtitle="Professional services for all your mobile software needs"
-      skeletonColumns={SERVICE_COLUMNS}
-    >
-      <ServiceResults searchParams={searchParams} />
-    </ListingPage>
+    <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
+      <SectionHeading lead="Our" highlight="Services" subtitle="Tool rent, IMEI and server services, paid from your balance" />
+      <div className="mt-10">
+        <RentCatalog />
+      </div>
+    </div>
   );
 }
