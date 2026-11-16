@@ -162,6 +162,12 @@ function rawCustomFields(value: unknown): RawCustomField[] {
   return list.filter((field): field is RawCustomField => Boolean(field) && typeof field === "object");
 }
 
+/** Reads a cost like 1.5, "1.50", "$1.50" or "1,250.00". Unreadable values become 0, which blocks ordering. */
+function parseCredit(value: unknown): number {
+  const amount = Number.parseFloat(String(value ?? "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
 const MAX_QUANTITY = 1000;
 
 function quantityLimits(raw: RawService): { minQuantity: number; maxQuantity: number } {
@@ -185,7 +191,7 @@ export async function listProviderServices(credentials: ProviderCredentials): Pr
         name: String(raw.SERVICENAME ?? "").trim(),
         group: String(group.GROUPNAME ?? groupKey).trim(),
         type: String(raw.SERVICETYPE ?? "").trim(),
-        costUsd: Number(raw.CREDIT) || 0,
+        costUsd: parseCredit(raw.CREDIT),
         deliveryTime: String(raw.TIME ?? "").trim(),
         info: String(raw.INFO ?? "").trim(),
         ...quantityLimits(raw),

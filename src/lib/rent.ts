@@ -258,22 +258,27 @@ export async function placeOrder(
     const allowed = minQuantity === maxQuantity ? `${minQuantity}` : `${minQuantity}–${maxQuantity}`;
     throw new ApiError(422, "Please check the highlighted fields.", undefined, { quantity: `Quantity must be ${allowed}` });
   }
-  const price = effectivePrice(service, pricing) * quantity;
+  // Money guard: every order must be paid for, and never below what the provider charges us.
+  // A cost the provider sent in an unreadable format is stored as 0, which would otherwise make
+  // the automatic price ৳0 and let anyone order for free while the provider bills the admin.
+  const unitPrice = effectivePrice(service, pricing);
+  const unitCostBdt = service.costUsd * (service.costCurrency === "BDT" ? 1 : pricing.rate);
+  if (!Number.isInteger(unitPrice) || unitPrice <= 0 || !Number.isFinite(unitCostBdt) || unitPrice < unitCostBdt) {
+    console.error("[rent] Order blocked: price missing or below cost", { serviceId: String(service._id), unitPrice, unitCostBdt });
+    throw new ApiError(503, "This service is not available right now. Please contact support.");
+  }
+  const price = unitPrice * quantity;
   const serviceName = service.title || service.name;
   const orderId = new Types.ObjectId();
 
   let balance: number;
-  if (price > 0) {
-    try {
-      balance = await changeBalance(customerId, -price, "order", serviceName, orderId);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 402) {
-        throw new ApiError(402, `Not enough balance. This rent costs ৳${price}. Please ask the admin to add balance.`);
-      }
-      throw error;
+  try {
+    balance = await changeBalance(customerId, -price, "order", serviceName, orderId);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 402) {
+      throw new ApiError(402, `Not enough balance. This rent costs ৳${price}. Please ask the admin to add balance.`);
     }
-  } else {
-    balance = (await Customer.findById(customerId, { balance: 1 }).lean())?.balance ?? 0;
+    throw error;
   }
 
   const order = await RentOrder.create({
