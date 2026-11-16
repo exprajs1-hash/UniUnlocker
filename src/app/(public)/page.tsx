@@ -6,6 +6,7 @@ import { PartnersSection } from "@/components/sections/partners-section";
 import { PortfolioSection } from "@/components/sections/portfolio-section";
 import { ServerStatusSection } from "@/components/sections/server-status-section";
 import { BannerSection } from "@/components/sections/banner-section";
+import { RentServicesSection } from "@/components/sections/rent-services-section";
 import { ToolsSection } from "@/components/sections/tools-section";
 import { CardGridSkeleton, HeroSkeleton, SplitSkeleton } from "@/components/ui/skeleton";
 import { getSettings } from "@/lib/data";
@@ -38,6 +39,7 @@ export default function HomePage() {
       <Suspense>
         <BannerSection />
       </Suspense>
+      <RentServicesSection />
       <Suspense fallback={<SplitSkeleton />}>
         <AboutSection />
       </Suspense>
