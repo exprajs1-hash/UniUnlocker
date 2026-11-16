@@ -25,6 +25,8 @@ export interface CurrentCustomer {
   email: string;
   phone: string;
   balance: number;
+  /** Personal rate set by the admin. Server-side only: never send it to the browser. */
+  priceAdjustPercent: number;
 }
 
 export async function setCustomerSession(customerId: string, tokenVersion: number): Promise<void> {
@@ -73,6 +75,7 @@ export async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
     email: customer.email,
     phone: customer.phone,
     balance: customer.balance,
+    priceAdjustPercent: customer.priceAdjustPercent ?? 0,
   };
 }
 

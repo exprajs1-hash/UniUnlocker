@@ -197,6 +197,8 @@ export interface PublicRentServiceDTO {
   deliveryTime: string;
   info: string;
   priceBdt: number;
+  /** The public price, only present when this customer's personal rate is lower. */
+  regularPriceBdt?: number;
   customFields: RentCustomFieldDTO[];
   minQuantity: number;
   maxQuantity: number;
@@ -271,6 +273,8 @@ export interface CustomerDTO {
   email: string;
   phone: string;
   balance: number;
+  /** Personal rate vs the public price; missing on customers saved before it existed (= 0). */
+  priceAdjustPercent?: number;
   active: boolean;
   createdAt: string;
 }

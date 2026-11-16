@@ -301,7 +301,18 @@ export const balanceAdjustSchema = z.object({
   note: optionalText(200),
 });
 
-export const customerPatchSchema = z.object({ active: z.boolean() });
+export const customerPatchSchema = z
+  .object({
+    active: z.boolean(),
+    /** Personal rate vs the public price: -10 = 10% cheaper, 5 = 5% dearer. */
+    priceAdjustPercent: z
+      .number({ error: "Enter a percentage, e.g. -10" })
+      .min(-90, "At most 90% cheaper")
+      .max(500, "This rate is too high")
+      .refine((value) => Math.abs(Math.round(value * 100) - value * 100) < 1e-6, "Use at most 2 decimals"),
+  })
+  .partial()
+  .refine((data) => data.active !== undefined || data.priceAdjustPercent !== undefined, "Nothing to update.");
 
 /** Every key is optional with no defaults, so a PATCH only touches what it sends. */
 export const rentServicePatchSchema = z.object({

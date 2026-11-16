@@ -45,6 +45,6 @@ export const POST = route(async (request) => {
     });
   }
 
-  const result = await placeOrder(customer.id, serviceId, fields, quantity);
+  const result = await placeOrder(customer.id, serviceId, fields, quantity, customer.priceAdjustPercent);
   return json(result, 201);
 });

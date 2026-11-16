@@ -97,6 +97,70 @@ function BalanceForm({ customer, onDone }: { customer: CustomerDTO; onDone: (bal
   );
 }
 
+/** "-10%" / "+5%" / "Public price" for a personal rate. */
+function rateLabel(percent: number | undefined): string {
+  const value = percent ?? 0;
+  if (value === 0) return "Public price";
+  return `${value > 0 ? "+" : ""}${value}%`;
+}
+
+function PriceRateForm({ customer, onDone }: { customer: CustomerDTO; onDone: (customer: CustomerDTO) => void }) {
+  const [value, setValue] = useState(String(customer.priceAdjustPercent ?? 0));
+  const [error, setError] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const percent = value.trim() === "" ? 0 : Number(value);
+    if (!Number.isFinite(percent) || percent < -90 || percent > 500) {
+      setError("Enter a number from -90 to 500");
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      const result = await apiFetch<{ customer: CustomerDTO }>(`/api/customers/${customer.id}`, {
+        method: "PATCH",
+        body: { priceAdjustPercent: percent },
+      });
+      toast.success(`Price rate set to ${rateLabel(result.customer.priceAdjustPercent)}.`);
+      onDone(result.customer);
+    } catch (patchError) {
+      setError(fieldErrorsOf(patchError).priceAdjustPercent);
+      toast.error(errorMessage(patchError));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} noValidate className="space-y-3 rounded-lg border border-admin-line p-4">
+      <h3 className="font-medium">
+        Price rate <span className="ml-1 text-sm font-normal text-admin-muted">now: {rateLabel(customer.priceAdjustPercent)}</span>
+      </h3>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-40 flex-1">
+          <TextField
+            label="Rate vs public price (%)"
+            type="number"
+            value={value}
+            onChange={(next) => {
+              setValue(next);
+              setError(undefined);
+            }}
+            hint="-10 = 10% cheaper, 5 = 5% more, 0 = public price. Never goes below the provider cost. The customer only sees their final price."
+            error={error}
+          />
+        </div>
+        <button type="submit" disabled={busy} className="admin-btn admin-btn-primary mt-6">
+          {busy ? "Saving…" : "Save rate"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: CustomerDTO) => void }) {
   const { data, error, loading, reload, setData } = useResource<Detail>(`/api/customers/${id}`);
   const [tab, setTab] = useState<"wallet" | "orders">("wallet");
@@ -133,6 +197,15 @@ function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: C
         onDone={(balance) => {
           onChanged({ ...customer, balance });
           reload();
+        }}
+      />
+
+      <PriceRateForm
+        key={customer.priceAdjustPercent ?? 0}
+        customer={customer}
+        onDone={(updated) => {
+          setData((current) => current && { ...current, customer: updated });
+          onChanged(updated);
         }}
       />
 
@@ -259,6 +332,11 @@ export function CustomersManager() {
                     <p className="truncate font-medium">
                       {customer.name}
                       {!customer.active && <span className="ml-2 text-xs text-status-offline">Blocked</span>}
+                      {(customer.priceAdjustPercent ?? 0) !== 0 && (
+                        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                          Rate {rateLabel(customer.priceAdjustPercent)}
+                        </span>
+                      )}
                     </p>
                     <p className="truncate text-sm text-admin-muted">
                       {customer.email}

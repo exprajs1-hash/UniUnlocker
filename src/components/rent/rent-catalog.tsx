@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { formatBdt, ToolIcon } from "@/components/rent/shared";
+import { formatBdt, PriceTag, ToolIcon } from "@/components/rent/shared";
 import { apiFetch, ApiClientError, errorMessage } from "@/lib/client-api";
 import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type PublicRentServiceDTO, type RentCategory } from "@/types";
 
@@ -366,7 +366,7 @@ export function RentCatalog() {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</span>
+                    <span className="font-bold whitespace-nowrap text-neon"><PriceTag price={service.priceBdt} regular={service.regularPriceBdt} /></span>
                     <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-cyan">
                       View <ArrowRight aria-hidden className="size-3" />
                     </span>
@@ -417,7 +417,7 @@ export function RentCatalog() {
                     <td className="px-2 py-3 text-center">
                       <MinQtyBadge value={service.minQuantity} />
                     </td>
-                    <td className="px-2 py-3 text-right font-bold whitespace-nowrap text-neon">{formatBdt(service.priceBdt)}</td>
+                    <td className="px-2 py-3 text-right font-bold whitespace-nowrap text-neon"><PriceTag price={service.priceBdt} regular={service.regularPriceBdt} /></td>
                     <td className="px-4 py-3 text-right">
                       <Link href={`/services/${service.id}`} className="btn-neon min-h-9! px-3! text-xs">
                         View <ArrowRight aria-hidden className="size-3.5" />
@@ -450,7 +450,7 @@ export function RentCatalog() {
                 </span>
               </div>
               <div className="mt-4 flex items-center justify-between gap-3">
-                <span className="text-2xl font-bold text-neon">{formatBdt(service.priceBdt)}</span>
+                <span className="text-2xl font-bold text-neon"><PriceTag price={service.priceBdt} regular={service.regularPriceBdt} /></span>
                 <Link href={`/services/${service.id}`} className="btn-neon min-h-10! px-4! text-sm">
                   View <ArrowRight aria-hidden className="size-4" />
                 </Link>

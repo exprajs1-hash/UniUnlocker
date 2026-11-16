@@ -70,9 +70,31 @@ export function effectivePrice(
   return Math.ceil(service.costUsd * rate * (1 + pricing.markupPercent / 100));
 }
 
+type PricedService = Parameters<typeof effectivePrice>[0];
+
+/** What the provider charges us for one unit, in BDT (0 when the cost is unknown). */
+export function unitCostBdt(service: PricedService, pricing: Pricing): number {
+  return service.costUsd * (service.costCurrency === "BDT" ? 1 : pricing.rate);
+}
+
+/**
+ * One customer's price: the public price moved by their personal rate (e.g. -10 = 10%
+ * cheaper), rounded up to whole taka. A discount never goes below the provider's cost,
+ * so a special rate can never sell at a loss.
+ */
+export function customerPrice(service: PricedService, pricing: Pricing, adjustPercent = 0): number {
+  const base = effectivePrice(service, pricing);
+  if (!adjustPercent || base <= 0) return base;
+  // toFixed removes float noise such as 330.00000000000006 before rounding up.
+  const adjusted = Math.ceil(Number(((base * (100 + adjustPercent)) / 100).toFixed(6)));
+  return Math.max(adjusted, Math.ceil(unitCostBdt(service, pricing)));
+}
+
 type ServiceDoc = IRentService & { _id: unknown };
 
-export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentServiceDTO {
+export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent = 0): PublicRentServiceDTO {
+  const regular = effectivePrice(doc, pricing);
+  const price = customerPrice(doc, pricing, adjustPercent);
   return {
     id: String(doc._id),
     category: effectiveCategory(doc),
@@ -82,7 +104,9 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing): PublicRentSe
     group: doc.group,
     deliveryTime: doc.deliveryTime,
     info: doc.description ?? "",
-    priceBdt: effectivePrice(doc, pricing),
+    priceBdt: price,
+    // Only a discount is shown against the public price; a higher personal rate is not revealed.
+    ...(price < regular ? { regularPriceBdt: regular } : {}),
     customFields: doc.customFields ?? [],
     minQuantity: doc.minQuantity ?? 1,
     maxQuantity: doc.maxQuantity ?? 1,
@@ -239,6 +263,8 @@ export async function placeOrder(
   serviceId: string,
   input: Record<string, unknown>,
   quantity = 1,
+  /** The customer's personal rate, read from the database for this request. */
+  priceAdjustPercent = 0,
 ): Promise<PlaceOrderResult> {
   const pricing = await getPricing();
   if (!pricing.ordersEnabled) throw new ApiError(503, "New rent orders are paused right now. Please try again later.");
@@ -261,10 +287,10 @@ export async function placeOrder(
   // Money guard: every order must be paid for, and never below what the provider charges us.
   // A cost the provider sent in an unreadable format is stored as 0, which would otherwise make
   // the automatic price ৳0 and let anyone order for free while the provider bills the admin.
-  const unitPrice = effectivePrice(service, pricing);
-  const unitCostBdt = service.costUsd * (service.costCurrency === "BDT" ? 1 : pricing.rate);
-  if (!Number.isInteger(unitPrice) || unitPrice <= 0 || !Number.isFinite(unitCostBdt) || unitPrice < unitCostBdt) {
-    console.error("[rent] Order blocked: price missing or below cost", { serviceId: String(service._id), unitPrice, unitCostBdt });
+  const unitPrice = customerPrice(service, pricing, priceAdjustPercent);
+  const unitCost = unitCostBdt(service, pricing);
+  if (!Number.isInteger(unitPrice) || unitPrice <= 0 || !Number.isFinite(unitCost) || unitPrice < unitCost) {
+    console.error("[rent] Order blocked: price missing or below cost", { serviceId: String(service._id), unitPrice, unitCost });
     throw new ApiError(503, "This service is not available right now. Please contact support.");
   }
   const price = unitPrice * quantity;

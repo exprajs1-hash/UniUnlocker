@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { fetchMe } from "@/components/rent/rent-catalog";
-import { formatBdt, ToolIcon } from "@/components/rent/shared";
+import { formatBdt, PriceTag, ToolIcon } from "@/components/rent/shared";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
 import type { PublicRentServiceDTO, RentOrderDTO } from "@/types";
@@ -120,7 +120,7 @@ export function RentServiceDetail({ id }: { id: string }) {
             <div>
               <p className="text-xs font-semibold tracking-widest text-muted uppercase">Service price</p>
               <p className="font-display text-3xl font-bold text-neon">
-                {formatBdt(service.priceBdt)}
+                <PriceTag price={service.priceBdt} regular={service.regularPriceBdt} />
                 <span className="ml-1 text-sm font-normal text-muted">/ per order</span>
               </p>
             </div>

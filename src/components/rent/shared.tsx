@@ -29,6 +29,20 @@ export function formatBdt(amount: number): string {
   return `৳${BDT.format(amount)}`;
 }
 
+/** The customer's price, with the public price struck through when they have a special (lower) rate. */
+export function PriceTag({ price, regular }: { price: number; regular?: number }) {
+  return (
+    <>
+      {regular !== undefined && regular > price && (
+        <s className="mr-1.5 text-[0.7em] font-normal text-muted" aria-label={`Regular price ${formatBdt(regular)}`}>
+          {formatBdt(regular)}
+        </s>
+      )}
+      {formatBdt(price)}
+    </>
+  );
+}
+
 export function formatSignedBdt(amount: number): string {
   return `${amount > 0 ? "+" : "−"}${formatBdt(Math.abs(amount))}`;
 }
