@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, LayoutDashboard, LayoutGrid, LogIn, Menu, Send, Wrench, X } from "lucide-react";
+import { ChevronDown, LayoutGrid, LogIn, Menu, Send, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -228,7 +228,7 @@ function useHeaderCustomer(pathname: string): HeaderCustomer | null | undefined 
   return customer;
 }
 
-/** "Dashboard" (photo, name, balance) when signed in; "Login" otherwise. */
+/** The customer's photo, name and balance when signed in (links to their account); "Login" otherwise. */
 function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer | null | undefined; onClick?: () => void; mobile?: boolean }) {
   if (mobile) {
     return (
@@ -237,7 +237,7 @@ function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer |
           <>
             <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
             <span className="min-w-0 flex-1">
-              <span className="block truncate">Dashboard</span>
+              <span className="block truncate">{customer.name}</span>
               <span className="block text-xs font-semibold text-cyan">Balance {formatTaka(customer.balance)}</span>
             </span>
           </>
@@ -264,14 +264,12 @@ function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer |
     <Link
       href="/account"
       onClick={onClick}
-      title="My dashboard"
-      className="flex items-center gap-2 rounded-full border border-line/60 py-1 pr-4 pl-1 transition hover:border-cyan"
+      title={`${customer.name}: my account`}
+      className="flex max-w-48 items-center gap-2 rounded-full border border-line/60 py-1 pr-4 pl-1 transition hover:border-cyan"
     >
       <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
-      <span className="leading-tight">
-        <span className="flex items-center gap-1 text-sm font-semibold">
-          <LayoutDashboard aria-hidden className="size-3.5" /> Dashboard
-        </span>
+      <span className="min-w-0 leading-tight">
+        <span className="block truncate text-sm font-semibold">{customer.name}</span>
         <span className="block text-xs font-bold text-cyan tabular-nums">{formatTaka(customer.balance)}</span>
       </span>
     </Link>
