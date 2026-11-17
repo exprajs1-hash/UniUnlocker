@@ -13,8 +13,11 @@ export function detectCategory(type: string, name: string): RentCategory {
   return "imei";
 }
 
-/** The admin's choice, or the detected one when left on "Auto". */
-export function effectiveCategory(service: { category?: string; type: string; name: string }): RentCategory {
-  const chosen = service.category;
-  return chosen === "rent" || chosen === "imei" || chosen === "server" ? chosen : detectCategory(service.type, service.name);
+/**
+ * The admin's choice (a built-in or an admin-made category slug), or the
+ * detected one when left on "Auto". A custom slug is checked when it is saved,
+ * and services are moved back to "Auto" when their category is deleted.
+ */
+export function effectiveCategory(service: { category?: string; type: string; name: string }): string {
+  return service.category || detectCategory(service.type, service.name);
 }

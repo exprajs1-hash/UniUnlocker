@@ -242,7 +242,8 @@ export async function placeProviderOrder(
   return String(reference);
 }
 
-export type ProviderOrderState = "pending" | "processing" | "completed" | "rejected";
+import { parseProviderState, type ProviderOrderState } from "@/lib/provider-state";
+export { parseProviderState, type ProviderOrderState };
 
 export interface ProviderOrderStatus {
   state: ProviderOrderState;
@@ -288,13 +289,6 @@ function resultText(value: unknown): string {
 }
 
 /** Maps a provider status (DHRU code or a word some panels send) to ours. Unknown values stay pending. */
-export function parseProviderState(raw: string): ProviderOrderState {
-  const value = raw.trim().toLowerCase();
-  if (value === "4" || /^(success|completed?|done|delivered)$/.test(value)) return "completed";
-  if (value === "3" || /^(reject(ed)?|cancell?ed|refunded|failed)$/.test(value)) return "rejected";
-  if (value === "1" || /^(in ?process|processing|in progress)$/.test(value)) return "processing";
-  return "pending";
-}
 
 type StatusRequest = { parameters: string; extra?: Record<string, string> };
 

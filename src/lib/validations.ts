@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { isUsableImageUrl } from "@/lib/images";
+import { isMoney } from "@/lib/money";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
 import { SERVICE_ICON_NAMES } from "@/lib/service-icons";
-import { CUSTOMER_TAGS, PROJECT_STATUSES, SERVER_STATUSES } from "@/types";
+import { SLUG_PATTERN } from "@/lib/service-categories";
+import { CATEGORY_ICON_NAMES, CUSTOMER_TAGS, PROJECT_STATUSES, SERVER_STATUSES } from "@/types";
 
 const text = (max: number, label: string) =>
   z.string().trim().min(1, `${label} is required`).max(max, `${label} is too long`);
@@ -295,7 +297,7 @@ export const resetPasswordSchema = z
 export const balanceAdjustSchema = z.object({
   amount: z.coerce
     .number({ error: "Enter an amount" })
-    .int("Use a whole number of taka")
+    .refine(isMoney, "Use at most 2 decimals (paisa)")
     .refine((value) => value !== 0, "The amount cannot be 0")
     .refine((value) => Math.abs(value) <= 10_000_000, "This amount is too large"),
   note: optionalText(200),
@@ -333,13 +335,19 @@ export const rentServicePatchSchema = z.object({
     .max(500, "This URL is too long")
     .refine((value) => !value || isUsableImageUrl(value), "Upload an image, or paste an image link starting with https://")
     .optional(),
-  category: z.enum(["", "rent", "imei", "server"]).optional(),
+  // "" (auto), a built-in category or an admin-made category's slug; the route checks a custom slug exists.
+  category: z
+    .string()
+    .trim()
+    .max(60, "Choose a valid category")
+    .refine((value) => value === "" || SLUG_PATTERN.test(value), "Choose a valid category")
+    .optional(),
   priceBdt: z
     .preprocess(
       (value) => (typeof value === "string" ? (value.trim() === "" ? null : Number(value.trim())) : value),
       z
         .number({ error: "Enter a number, or leave it blank" })
-        .int("Use a whole number of taka")
+        .refine(isMoney, "Use at most 2 decimals (paisa)")
         .min(0, "Price cannot be negative")
         .max(10_000_000, "This price is too large")
         .nullable(),
@@ -384,3 +392,75 @@ export const providerSchema = z.object({
 });
 
 export const providerPatchSchema = z.object({ enabled: z.boolean() });
+
+/** An admin-made service category. The slug is made from the name when the category is created. */
+export const serviceCategorySchema = z.object({
+  name: text(60, "Name"),
+  description: z.string().trim().max(300, "Keep the description under 300 characters").default(""),
+  icon: z.enum(CATEGORY_ICON_NAMES, { error: "Choose an icon" }).default("globe"),
+  enabled: z.boolean().default(true),
+  displayOrder: z.coerce.number().int().min(0).max(100000).default(0),
+});
+
+/** No defaults: a PATCH only touches what it sends (e.g. the enable toggle must not reset the icon). */
+export const serviceCategoryPatchSchema = z.object({
+  name: text(60, "Name").optional(),
+  description: z.string().trim().max(300, "Keep the description under 300 characters").optional(),
+  icon: z.enum(CATEGORY_ICON_NAMES, { error: "Choose an icon" }).optional(),
+  enabled: z.boolean().optional(),
+  displayOrder: z.coerce.number().int().min(0).max(100000).optional(),
+});
+
+/**
+ * One thing the customer types when ordering a custom service, e.g. "UltraViewer ID".
+ * The name becomes a key in the stored order, so it cannot contain "." or start with "$".
+ */
+const customerFieldSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Give the field a name")
+    .max(60, "Keep the field name under 60 characters")
+    .refine((value) => !value.includes(".") && !value.startsWith("$"), 'Field names cannot contain "." or start with "$"'),
+  /** Dropdown choices; empty means a free text box. */
+  options: z.array(z.string().trim().min(1).max(100)).max(30, "At most 30 choices").default([]),
+  required: z.boolean().default(true),
+  /** Hidden ("••••••") in the order once it is finished, e.g. a password. */
+  sensitive: z.boolean().default(false),
+});
+
+const customerFields = z
+  .array(customerFieldSchema)
+  .max(15, "At most 15 fields")
+  .refine((fields) => new Set(fields.map((field) => field.name.toLowerCase())).size === fields.length, "Each field needs a different name");
+
+const manualPrice = z.coerce
+  .number({ error: "Enter a price" })
+  .refine(isMoney, "Use at most 2 decimals (paisa)")
+  .refine((value) => value > 0, "The price must be above 0")
+  .refine((value) => value <= 10_000_000, "This price is too large");
+
+/** A service the admin makes and delivers by hand (no provider), e.g. "Samsung FRP Remote". */
+export const manualServiceSchema = z.object({
+  name: text(150, "Name"),
+  category: z.string().trim().min(1, "Choose a category").max(60).regex(SLUG_PATTERN, "Choose a valid category"),
+  priceBdt: manualPrice,
+  deliveryTime: z.string().trim().max(60, "Keep it short, e.g. 10-30 minutes").default(""),
+  description: z.string().trim().max(3000, "This description is too long").default(""),
+  icon: z
+    .string()
+    .trim()
+    .max(500, "This URL is too long")
+    .refine((value) => !value || isUsableImageUrl(value), "Upload an image, or paste an image link starting with https://")
+    .default(""),
+  customFields: customerFields.default([]),
+  enabled: z.boolean().default(true),
+});
+
+/** Edits to a custom service; no defaults, so only what is sent changes. */
+export const manualServicePatchSchema = z.object({
+  name: text(150, "Name").optional(),
+  priceBdt: manualPrice.optional(),
+  deliveryTime: z.string().trim().max(60, "Keep it short, e.g. 10-30 minutes").optional(),
+  customFields: customerFields.optional(),
+});

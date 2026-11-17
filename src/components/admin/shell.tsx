@@ -22,34 +22,77 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { OnlineToggle } from "@/components/admin/online-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
 
-const NAV = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/servers", label: "Servers", icon: Server },
-  { href: "/admin/projects", label: "Projects", icon: FolderKanban },
-  { href: "/admin/services", label: "Services", icon: Wrench },
-  { href: "/admin/tools", label: "Tools", icon: Hammer },
-  { href: "/admin/rent-services", label: "Rent services", icon: Package },
-  { href: "/admin/rent-orders", label: "Rent orders", icon: ShoppingCart },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/banners", label: "Banners", icon: GalleryHorizontal },
-  { href: "/admin/partners", label: "Partners", icon: Handshake },
-  { href: "/admin/about", label: "About", icon: Info },
-  { href: "/admin/messages", label: "Messages", icon: Mail },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-  { href: "/admin/password", label: "Change password", icon: KeyRound },
+type Badge = "orders" | "messages";
+
+/** Grouped so the daily work (orders, customers) is on top and site content below. */
+const NAV: Array<{ title: string; links: Array<{ href: string; label: string; icon: typeof Server; badge?: Badge }> }> = [
+  {
+    title: "Business",
+    links: [
+      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/rent-orders", label: "Orders", icon: ShoppingCart, badge: "orders" },
+      { href: "/admin/customers", label: "Customers", icon: Users },
+      { href: "/admin/rent-services", label: "Rent services", icon: Package },
+    ],
+  },
+  {
+    title: "Website",
+    links: [
+      { href: "/admin/servers", label: "Servers", icon: Server },
+      { href: "/admin/tools", label: "Tools", icon: Hammer },
+      { href: "/admin/services", label: "Services", icon: Wrench },
+      { href: "/admin/projects", label: "Projects", icon: FolderKanban },
+      { href: "/admin/banners", label: "Banners", icon: GalleryHorizontal },
+      { href: "/admin/partners", label: "Partners", icon: Handshake },
+      { href: "/admin/about", label: "About", icon: Info },
+      { href: "/admin/messages", label: "Messages", icon: Mail, badge: "messages" },
+    ],
+  },
+  {
+    title: "Account",
+    links: [
+      { href: "/admin/settings", label: "Settings", icon: Settings },
+      { href: "/admin/password", label: "Change password", icon: KeyRound },
+    ],
+  },
 ];
+
+const COUNTS_POLL_MS = 60_000;
+
+/** Sidebar badge numbers, refreshed every minute and on page change. */
+function useAdminCounts(pathname: string): Record<Badge, number> {
+  const [counts, setCounts] = useState<Record<Badge, number>>({ orders: 0, messages: 0 });
+  useEffect(() => {
+    let active = true;
+    const load = () =>
+      fetch("/api/admin-counts", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: { ordersNeedingAction: number; unreadMessages: number } | null) => {
+          if (active && data) setCounts({ orders: data.ordersNeedingAction, messages: data.unreadMessages });
+        })
+        .catch(() => undefined);
+    void load();
+    const timer = setInterval(load, COUNTS_POLL_MS);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [pathname]);
+  return counts;
+}
 
 export function AdminShell({ email, children }: { email: string; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const pathname = usePathname();
   const toast = useToast();
+  const counts = useAdminCounts(pathname);
 
   async function signOut() {
     setSigningOut(true);
@@ -86,23 +129,43 @@ export function AdminShell({ email, children }: { email: string; children: React
             <X aria-hidden className="size-5" />
           </button>
         </div>
-        <nav aria-label="Admin" className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                  active ? "bg-primary/15 font-medium text-admin-text" : "text-admin-muted hover:bg-admin-raised hover:text-admin-text"
-                }`}
-              >
-                <Icon aria-hidden className={`size-4 ${active ? "text-primary" : ""}`} /> {label}
-              </Link>
-            );
-          })}
+        <nav aria-label="Admin" className="flex-1 space-y-5 overflow-y-auto p-3">
+          {NAV.map(({ title, links }) => (
+            <div key={title}>
+              <p className="mb-1 px-3 text-[11px] font-semibold tracking-wider text-admin-muted uppercase">{title}</p>
+              <ul className="space-y-0.5">
+                {links.map(({ href, label, icon: Icon, badge }) => {
+                  const active = pathname === href || pathname.startsWith(`${href}/`);
+                  const count = badge ? counts[badge] : 0;
+                  return (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setMenuOpen(false)}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                          active ? "bg-primary/15 font-medium text-admin-text" : "text-admin-muted hover:bg-admin-raised hover:text-admin-text"
+                        }`}
+                      >
+                        <Icon aria-hidden className={`size-4 ${active ? "text-primary" : ""}`} />
+                        <span className="flex-1">{label}</span>
+                        {count > 0 && (
+                          <span
+                            title={badge === "orders" ? "Orders waiting for you" : "Unread messages"}
+                            className={`min-w-5 rounded-full px-1.5 text-center text-xs font-bold text-white ${
+                              badge === "orders" ? "bg-status-offline" : "bg-primary"
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         </nav>
         <div className="border-t border-admin-line p-3">
           <a

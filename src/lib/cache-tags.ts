@@ -12,6 +12,7 @@ export const CACHE_TAGS = {
   tools: "tools",
   servers: "servers",
   projects: "projects",
+  serviceCategories: "service-categories",
 } as const;
 
 export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -26,6 +27,7 @@ const TAGS_BY_RESOURCE: Record<string, CacheTag[]> = {
   tools: [CACHE_TAGS.tools],
   servers: [CACHE_TAGS.servers],
   projects: [CACHE_TAGS.projects],
+  "rent-categories": [CACHE_TAGS.serviceCategories],
 };
 
 export function tagsForApiPath(pathname: string): CacheTag[] {

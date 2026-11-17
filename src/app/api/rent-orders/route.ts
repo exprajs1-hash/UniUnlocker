@@ -29,7 +29,8 @@ export const GET = adminRoute(async (request) => {
   const dto: AdminRentOrderDTO[] = orders.map(({ customer, ...order }) => ({
     ...toOrderDTO(order),
     serviceId: order.serviceId,
-    providerName: names.get(String(order.provider)) ?? "Deleted provider",
+    manual: order.manual ?? false,
+    providerName: order.manual ? "Custom service" : (names.get(String(order.provider)) ?? "Deleted provider"),
     costUsd: order.costUsd,
     costCurrency: order.costCurrency ?? "USD",
     providerOrderId: order.providerOrderId,

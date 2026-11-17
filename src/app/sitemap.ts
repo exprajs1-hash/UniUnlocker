@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
-import { getPublishedProjects } from "@/lib/data";
+import { getPublishedProjects, getServiceCategories } from "@/lib/data";
 import { SITE_URL } from "@/lib/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const projects = await getPublishedProjects();
+  const [projects, categories] = await Promise.all([getPublishedProjects(), getServiceCategories()]);
   return [
     { url: `${SITE_URL}/`, changeFrequency: "daily", priority: 1 },
-    ...["/services", "/servers", "/tools", "/portfolio", "/partners"].map((path) => ({
+    ...[...categories.map((category) => `/services/${category.slug}`), "/servers", "/tools", "/portfolio", "/partners"].map((path) => ({
       url: `${SITE_URL}${path}`,
       changeFrequency: "weekly" as const,
       priority: 0.8,

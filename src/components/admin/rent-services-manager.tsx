@@ -1,22 +1,26 @@
 "use client";
 
-import { Flame, Pencil, Search, Star } from "lucide-react";
+import { ArrowDownUp, Flame, Hand, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, SelectField, TextAreaField, TextField, Toggle } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/image-field";
 import { ProvidersPanel } from "@/components/admin/providers-panel";
 import { formatBdt, ToolIcon } from "@/components/rent/shared";
-import { Modal } from "@/components/ui/modal";
+import { ArrangeServices } from "@/components/admin/arrange-services";
+import { CustomServiceForm } from "@/components/admin/custom-service-form";
+import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
 import { formatCost } from "@/lib/pricing";
 import { detectCategory } from "@/lib/rent-category";
-import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type AdminRentServiceDTO, type RentCategory, type RentConfigDTO } from "@/types";
+import { ServiceCategoriesPanel } from "@/components/admin/service-categories-panel";
+import type { AdminRentServiceDTO, RentConfigDTO, ServiceCategoryDTO } from "@/types";
 
 type Data = { services: AdminRentServiceDTO[]; config: RentConfigDTO; rate: number };
-type Show = "enabled" | "rent" | "imei" | "server" | "featured" | "hot" | "all" | "problems";
+/** A fixed filter, or "cat:<slug>" for one category. */
+type Show = "enabled" | "rent" | "featured" | "hot" | "custom" | "all" | "problems" | `cat:${string}`;
 type Flags = Partial<Pick<AdminRentServiceDTO, "enabled" | "featured" | "hot">>;
 
 /** A small on/off pill for the homepage Featured / Hot picks. */
@@ -97,7 +101,7 @@ function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: n
   return (
     <form onSubmit={save} noValidate className="admin-card space-y-3 p-4">
       <p className="text-sm text-admin-muted">
-        Auto price = cost + markup, rounded up to whole taka. USD providers&apos; costs are first multiplied by {rate} (USD rate);
+        Auto price = cost + markup, rounded up to the paisa (e.g. ৳0.51). USD providers&apos; costs are first multiplied by {rate} (USD rate);
         BDT providers&apos; costs are used as-is. The rate is set in{" "}
         <Link href="/admin/settings" className="text-primary hover:underline">
           Settings
@@ -126,18 +130,21 @@ function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: n
 
 function ServiceForm({
   service,
+  categories,
   onSaved,
   onCancel,
 }: {
   service: AdminRentServiceDTO;
+  categories: ServiceCategoryDTO[];
   onSaved: (updated: AdminRentServiceDTO) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(service.title);
   const [description, setDescription] = useState(service.description);
   const [icon, setIcon] = useState(service.icon ?? "");
-  const [category, setCategory] = useState<RentCategory | "">(service.category ?? "");
+  const [category, setCategory] = useState(service.category ?? "");
   const detected = detectCategory(service.type, service.name);
+  const nameOf = (slug: string) => categories.find((item) => item.slug === slug)?.name ?? slug;
   const [price, setPrice] = useState(service.priceBdt === null ? "" : String(service.priceBdt));
   const [order, setOrder] = useState(String(service.displayOrder));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -175,18 +182,22 @@ function ServiceForm({
         error={errors.title}
       />
       <div>
-        <SelectField<RentCategory | "">
-          label="Section on website"
+        <SelectField<string>
+          label="Category on website"
           value={category}
           onChange={setCategory}
           error={errors.category}
           options={[
-            { value: "", label: `Auto (${RENT_CATEGORY_LABELS[detected]})` },
-            ...RENT_CATEGORIES.map((value) => ({ value, label: RENT_CATEGORY_LABELS[value] })),
+            { value: "", label: `Auto (${nameOf(detected)})` },
+            ...categories.map(({ slug, name, builtIn, enabled }) => ({
+              value: slug,
+              label: `${name}${builtIn ? "" : enabled ? " (custom)" : " (custom, hidden)"}`,
+            })),
           ]}
         />
         <p className="mt-1 text-xs text-admin-muted">
-          Which tab customers find it under on the Services (/rent) page. Provider type: {service.type || "unknown"}.
+          Which Services page customers find it on. Make your own categories in the Categories box above. Provider type:{" "}
+          {service.type || "unknown"}.
         </p>
       </div>
       <ImageField
@@ -207,7 +218,7 @@ function ServiceForm({
       <TextField
         label="Fixed price (BDT)"
         type="number"
-        hint="Leave blank to use the automatic price from cost, USD rate and markup."
+        hint="Paisa allowed, e.g. 0.50. Leave blank to use the automatic price from cost, USD rate and markup."
         value={price}
         onChange={setPrice}
         error={errors.priceBdt}
@@ -227,11 +238,19 @@ function ServiceForm({
 
 export function RentServicesManager() {
   const { data, error, loading, reload, setData } = useResource<Data>("/api/rent-services");
+  const { data: categoryData, reload: reloadCategories } = useResource<{ categories: ServiceCategoryDTO[] }>("/api/rent-categories");
+  const categories = categoryData?.categories ?? [];
+  const categoryName = (slug: string) => categories.find((item) => item.slug === slug)?.name ?? slug;
   const [show, setShow] = useState<Show>("rent");
   const [query, setQuery] = useState("");
   const [providerFilter, setProviderFilter] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const [editing, setEditing] = useState<AdminRentServiceDTO | null>(null);
+  /** A custom service being created ("new") or edited. */
+  const [customForm, setCustomForm] = useState<AdminRentServiceDTO | "new" | null>(null);
+  const [deleting, setDeleting] = useState<AdminRentServiceDTO | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [arranging, setArranging] = useState(false);
   const toast = useToast();
   const services = data?.services;
 
@@ -241,9 +260,10 @@ export function RentServicesManager() {
       if (providerFilter && service.provider !== providerFilter) return false;
       if (show === "enabled" && !service.enabled) return false;
       if (show === "rent" && !service.enabled && !isRent(service)) return false;
-      if ((show === "imei" || show === "server") && service.effectiveCategory !== show) return false;
+      if (show.startsWith("cat:") && service.effectiveCategory !== show.slice(4)) return false;
       if (show === "featured" && !service.featured) return false;
       if (show === "hot" && !service.hot) return false;
+      if (show === "custom" && !service.manual) return false;
       if (show === "problems" && !failedLastOrder(service) && service.availableOnProvider) return false;
       if (!needle) return true;
       return `${service.name} ${service.title} ${service.group} ${service.serviceId} ${service.providerName}`.toLowerCase().includes(needle);
@@ -282,8 +302,24 @@ export function RentServicesManager() {
   const enabledCount = services?.filter((service) => service.enabled).length ?? 0;
   const featuredCount = services?.filter((service) => service.featured).length ?? 0;
   const hotCount = services?.filter((service) => service.hot).length ?? 0;
-  const categoryCounts = { rent: 0, imei: 0, server: 0 };
-  for (const service of services ?? []) categoryCounts[service.effectiveCategory] += 1;
+  const customCount = services?.filter((service) => service.manual).length ?? 0;
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    try {
+      await apiFetch(`/api/rent-services/${deleting.id}`, { method: "DELETE" });
+      setData((current) => current && { ...current, services: current.services.filter((s) => s.id !== deleting.id) });
+      toast.success(`"${deleting.title || deleting.name}" deleted. Past orders are kept.`);
+      setDeleting(null);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+  const categoryCounts: Record<string, number> = {};
+  for (const service of services ?? []) categoryCounts[service.effectiveCategory] = (categoryCounts[service.effectiveCategory] ?? 0) + 1;
   const problemCount = services?.filter((service) => failedLastOrder(service) || !service.availableOnProvider).length ?? 0;
 
   return (
@@ -301,7 +337,30 @@ export function RentServicesManager() {
         <>
           <div className="mb-6 space-y-4">
             <ProvidersPanel onServicesChanged={reload} />
+            <ServiceCategoriesPanel
+              categories={categories}
+              onChanged={() => {
+                reloadCategories();
+                // Deleting a category moves its services back to Auto.
+                reload();
+              }}
+            />
             <PricingCard key={JSON.stringify(data.config)} config={data.config} rate={data.rate} onSaved={reload} />
+          </div>
+
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-bold">Services</h2>
+              <p className="text-xs text-admin-muted">Provider services sync automatically. Custom services are ones you deliver yourself.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setArranging(true)} className="admin-btn admin-btn-secondary">
+                <ArrowDownUp aria-hidden className="size-4" /> Arrange order
+              </button>
+              <button type="button" onClick={() => setCustomForm("new")} className="admin-btn admin-btn-primary">
+                <Plus aria-hidden className="size-4" /> Add custom service
+              </button>
+            </div>
           </div>
 
           {data.services.length === 0 ? (
@@ -357,11 +416,17 @@ export function RentServicesManager() {
                     className="admin-input"
                   >
                     <option value="rent">Rent / remote services</option>
-                    <option value="imei">IMEI services ({categoryCounts.imei})</option>
-                    <option value="server">Server services ({categoryCounts.server})</option>
+                    {categories
+                      .filter((item) => item.slug !== "rent")
+                      .map((item) => (
+                        <option key={item.slug} value={`cat:${item.slug}`}>
+                          {item.name} ({categoryCounts[item.slug] ?? 0})
+                        </option>
+                      ))}
                     <option value="enabled">Shown on website ({enabledCount})</option>
                     <option value="featured">Featured products ({featuredCount})</option>
                     <option value="hot">Hot products ({hotCount})</option>
+                    <option value="custom">Custom services ({customCount})</option>
                     <option value="all">All services ({data.services.length})</option>
                     <option value="problems">Problem services ({problemCount})</option>
                   </select>
@@ -384,8 +449,13 @@ export function RentServicesManager() {
                         <p className="font-medium">
                           {service.title || service.name}
                           <span className="ml-2 rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
-                            {RENT_CATEGORY_LABELS[service.effectiveCategory]}
+                            {categoryName(service.effectiveCategory)}
                           </span>
+                          {service.manual && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded bg-purple/15 px-1.5 py-0.5 text-xs text-purple">
+                              <Hand aria-hidden className="size-3" /> Custom
+                            </span>
+                          )}
                           {service.availableOnProvider ? (
                             <span className="ml-2 rounded bg-status-online/15 px-1.5 py-0.5 text-xs text-status-online">Available</span>
                           ) : (
@@ -440,9 +510,24 @@ export function RentServicesManager() {
                           disabled={!service.availableOnProvider && !service.enabled}
                           onChange={(value) => void toggle(service, { enabled: value })}
                         />
-                        <button type="button" aria-label={`Edit ${service.name}`} onClick={() => setEditing(service)} className="admin-icon-btn">
+                        <button
+                          type="button"
+                          aria-label={`Edit ${service.name}`}
+                          onClick={() => (service.manual ? setCustomForm(service) : setEditing(service))}
+                          className="admin-icon-btn"
+                        >
                           <Pencil aria-hidden className="size-4" />
                         </button>
+                        {service.manual && (
+                          <button
+                            type="button"
+                            aria-label={`Delete ${service.name}`}
+                            onClick={() => setDeleting(service)}
+                            className="admin-icon-btn hover:text-status-offline!"
+                          >
+                            <Trash2 aria-hidden className="size-4" />
+                          </button>
+                        )}
                       </div>
                     </li>
                   ))}
@@ -460,11 +545,65 @@ export function RentServicesManager() {
         </>
       ) : null}
 
+      <Modal
+        open={customForm !== null}
+        onClose={() => setCustomForm(null)}
+        title={customForm === "new" ? "Add custom service" : "Edit custom service"}
+        className="max-w-2xl"
+      >
+        {customForm !== null && (
+          <CustomServiceForm
+            key={customForm === "new" ? "new" : customForm.id}
+            service={customForm === "new" ? null : customForm}
+            categories={categories}
+            onCancel={() => setCustomForm(null)}
+            onSaved={(saved) => {
+              if (customForm === "new") {
+                setData((current) => current && { ...current, services: [saved, ...current.services] });
+                setShow("custom");
+              } else {
+                replace(saved);
+              }
+              setCustomForm(null);
+            }}
+          />
+        )}
+      </Modal>
+
+      <Modal open={arranging} onClose={() => setArranging(false)} title="Arrange services" className="max-w-2xl">
+        {arranging && data && (
+          <ArrangeServices
+            services={data.services}
+            categories={categories}
+            onSaved={(ordered) => {
+              const order = new Map(ordered.map((service) => [service.id, service.displayOrder]));
+              setData(
+                (current) =>
+                  current && {
+                    ...current,
+                    services: current.services.map((s) => (order.has(s.id) ? { ...s, displayOrder: order.get(s.id)! } : s)),
+                  },
+              );
+            }}
+          />
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Delete custom service?"
+        message={`"${deleting?.title || deleting?.name}" will be removed from the website. Past orders and their results are kept.`}
+        busy={deleteBusy}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => void confirmDelete()}
+      />
+
       <Modal open={editing !== null} onClose={() => setEditing(null)} title="Edit rent service">
         {editing && (
           <ServiceForm
             key={editing.id}
             service={editing}
+            categories={categories}
             onCancel={() => setEditing(null)}
             onSaved={(updated) => {
               replace(updated);

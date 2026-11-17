@@ -1,11 +1,13 @@
 import { ApiError, json, readJson, route } from "@/lib/api";
 import { requireCustomer } from "@/lib/customer-auth";
 import { consumeRateLimit } from "@/lib/rate-limit";
-import { placeOrder, refreshOpenOrders, toOrderDTO } from "@/lib/rent";
+import { notifyOrderPlaced } from "@/lib/notifications";
+import { followUpOrder, placeOrder, refreshOpenOrders, toOrderDTO } from "@/lib/rent";
 import { rentOrderSchema } from "@/lib/validations";
 import { RentOrder } from "@/models/RentOrder";
 import type { RentOrderStatsDTO, RentOrderStatus } from "@/types";
 import { Types } from "mongoose";
+import { after } from "next/server";
 
 const MAX_ORDERS_PER_MINUTE = 6;
 
@@ -46,5 +48,9 @@ export const POST = route(async (request) => {
   }
 
   const result = await placeOrder(customer.id, serviceId, fields, quantity, customer.priceAdjustPercent);
+  // Many services finish within seconds: check back a few times after replying, so the order
+  // completes even if the customer closes the page right away.
+  notifyOrderPlaced(result.order.id);
+  if (result.order.status === "pending" || result.order.status === "processing") after(() => followUpOrder(result.order.id));
   return json(result, 201);
 });

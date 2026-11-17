@@ -11,6 +11,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getProviderCredentials } from "@/lib/providers";
 import { stripProviderContacts } from "@/lib/provider-text";
 import { effectiveCategory } from "@/lib/rent-category";
+import { ceilMoney, isMoney, roundMoney } from "@/lib/money";
+import { notifyOrderFinished } from "@/lib/notifications";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
 import { serialize } from "@/lib/serialize";
 import { BalanceTransaction } from "@/models/BalanceTransaction";
@@ -58,7 +60,7 @@ export function toRentConfigDTO(pricing: Pricing): RentConfigDTO {
 }
 
 /**
- * The admin's fixed price, or cost + markup rounded up to whole taka. A USD cost
+ * The admin's fixed price, or cost + markup rounded up to the paisa. A USD cost
  * is converted with the USD rate first; a BDT cost (BDT providers) is used as-is.
  */
 export function effectivePrice(
@@ -67,7 +69,7 @@ export function effectivePrice(
 ): number {
   if (service.priceBdt !== null && service.priceBdt !== undefined) return service.priceBdt;
   const rate = service.costCurrency === "BDT" ? 1 : pricing.rate;
-  return Math.ceil(service.costUsd * rate * (1 + pricing.markupPercent / 100));
+  return ceilMoney(service.costUsd * rate * (1 + pricing.markupPercent / 100));
 }
 
 type PricedService = Parameters<typeof effectivePrice>[0];
@@ -79,15 +81,14 @@ export function unitCostBdt(service: PricedService, pricing: Pricing): number {
 
 /**
  * One customer's price: the public price moved by their personal rate (e.g. -10 = 10%
- * cheaper), rounded up to whole taka. A discount never goes below the provider's cost,
+ * cheaper), rounded up to the paisa. A discount never goes below the provider's cost,
  * so a special rate can never sell at a loss.
  */
 export function customerPrice(service: PricedService, pricing: Pricing, adjustPercent = 0): number {
   const base = effectivePrice(service, pricing);
   if (!adjustPercent || base <= 0) return base;
-  // toFixed removes float noise such as 330.00000000000006 before rounding up.
-  const adjusted = Math.ceil(Number(((base * (100 + adjustPercent)) / 100).toFixed(6)));
-  return Math.max(adjusted, Math.ceil(unitCostBdt(service, pricing)));
+  const adjusted = ceilMoney((base * (100 + adjustPercent)) / 100);
+  return Math.max(adjusted, ceilMoney(unitCostBdt(service, pricing)));
 }
 
 type ServiceDoc = IRentService & { _id: unknown; createdAt?: Date };
@@ -131,8 +132,9 @@ export function toAdminService(
     hot: doc.hot ?? false,
     category: (doc.category ?? "") as AdminRentServiceDTO["category"],
     effectiveCategory: effectiveCategory(doc),
-    provider: String(doc.provider),
-    providerName: providerNames.get(String(doc.provider)) ?? "Deleted provider",
+    provider: doc.provider ? String(doc.provider) : "",
+    manual: doc.manual ?? false,
+    providerName: doc.manual ? "Custom service" : (providerNames.get(String(doc.provider)) ?? "Deleted provider"),
     costCurrency: doc.costCurrency ?? "USD",
     effectivePriceBdt: effectivePrice(doc, pricing),
   };
@@ -147,7 +149,7 @@ export async function providerNameMap(): Promise<Map<string, string>> {
 /* ------------------------------------------------------------------- wallet */
 
 /**
- * Adds (positive) or deducts (negative) whole taka atomically. A deduction
+ * Adds (positive) or deducts (negative) taka, to the paisa, atomically. A deduction
  * only succeeds when the balance covers it, so two parallel orders can never
  * take the balance below zero.
  */
@@ -158,10 +160,16 @@ export async function changeBalance(
   note: string,
   orderId: Types.ObjectId | null = null,
 ): Promise<number> {
-  if (!Number.isInteger(amount) || amount === 0) throw new ApiError(422, "The amount must be a whole, non-zero number.");
+  if (!isMoney(amount) || roundMoney(amount) === 0) throw new ApiError(422, "The amount must be non-zero, with at most 2 decimals.");
+  amount = roundMoney(amount);
   await connectToDatabase();
   const filter = amount < 0 ? { _id: customerId, balance: { $gte: -amount } } : { _id: customerId };
-  const customer = await Customer.findOneAndUpdate(filter, { $inc: { balance: amount } }, { returnDocument: "after" }).lean();
+  // A pipeline update adds and rounds to the paisa in one atomic step, so float noise never builds up in a balance.
+  const customer = await Customer.findOneAndUpdate(
+    filter,
+    [{ $set: { balance: { $round: [{ $add: ["$balance", amount] }, 2] } } }],
+    { returnDocument: "after", updatePipeline: true },
+  ).lean();
   if (!customer) {
     const exists = await Customer.exists({ _id: customerId });
     if (!exists) throw new ApiError(404, "Customer not found.");
@@ -197,6 +205,8 @@ export async function refundOrder(
   if (order.priceBdt > 0) {
     await changeBalance(String(order.customer), order.priceBdt, "refund", note, order._id as Types.ObjectId);
   }
+  await hideSensitiveFields(orderId);
+  notifyOrderFinished(orderId);
   return true;
 }
 
@@ -278,9 +288,12 @@ export async function placeOrder(
   const service = await RentService.findOne({ _id: serviceId, enabled: true, availableOnProvider: true }).lean();
   if (!service) throw new ApiError(404, "This service is not available.");
   // Checked before any money moves: a disabled or deleted provider cannot take orders.
-  const credentials = await getProviderCredentials(service.provider, true).catch(() => {
-    throw new ApiError(404, "This service is not available.");
-  });
+  // A custom (manual) service has no provider: the admin delivers it by hand.
+  const credentials = service.manual
+    ? null
+    : await getProviderCredentials(service.provider ?? "", true).catch(() => {
+        throw new ApiError(404, "This service is not available.");
+      });
 
   const fields = cleanFields(service, input);
   const minQuantity = service.minQuantity ?? 1;
@@ -294,11 +307,11 @@ export async function placeOrder(
   // the automatic price ৳0 and let anyone order for free while the provider bills the admin.
   const unitPrice = customerPrice(service, pricing, priceAdjustPercent);
   const unitCost = unitCostBdt(service, pricing);
-  if (!Number.isInteger(unitPrice) || unitPrice <= 0 || !Number.isFinite(unitCost) || unitPrice < unitCost) {
+  if (!isMoney(unitPrice) || unitPrice <= 0 || !Number.isFinite(unitCost) || unitPrice < unitCost) {
     console.error("[rent] Order blocked: price missing or below cost", { serviceId: String(service._id), unitPrice, unitCost });
     throw new ApiError(503, "This service is not available right now. Please contact support.");
   }
-  const price = unitPrice * quantity;
+  const price = roundMoney(unitPrice * quantity);
   const serviceName = service.title || service.name;
   const orderId = new Types.ObjectId();
 
@@ -312,10 +325,38 @@ export async function placeOrder(
     throw error;
   }
 
+  const sensitiveFields = (service.customFields ?? []).filter((field) => field.sensitive).map((field) => field.name);
+  if (service.manual) {
+    // No provider: the order waits for the admin, who completes it (with the result) or rejects it (refund).
+    const now = new Date();
+    const order = await RentOrder.create({
+      _id: orderId,
+      customer: customerId,
+      provider: null,
+      manual: true,
+      serviceId: service.serviceId,
+      serviceName,
+      quantity,
+      priceBdt: price,
+      costUsd: 0,
+      costCurrency: "BDT",
+      fields,
+      sensitiveFields,
+      status: "pending",
+      statusHistory: [{ status: "pending", at: now }],
+    });
+    return {
+      order: toOrderDTO(order.toObject()),
+      balance,
+      message: "Order received. We will start working on it shortly; the result will appear here.",
+    };
+  }
+
   const order = await RentOrder.create({
     _id: orderId,
     customer: customerId,
     provider: service.provider,
+    sensitiveFields,
     serviceId: service.serviceId,
     serviceName,
     quantity,
@@ -338,7 +379,7 @@ export async function placeOrder(
       delete customFields[imeiName];
     }
     if (!imei && Object.keys(customFields).length === 0) imei = String(orderId);
-    const reference = await placeProviderOrder(credentials, service.serviceId, customFields, quantity, imei);
+    const reference = await placeProviderOrder(credentials!, service.serviceId, customFields, quantity, imei);
     order.providerOrderId = reference;
     order.status = "pending";
     order.statusHistory.push({ status: "pending", at: new Date() });
@@ -376,7 +417,10 @@ export type RefreshOutcome =
  * A failed check is saved on the order so the admin can see why it is stuck.
  */
 export async function refreshOrder(order: IRentOrder & { _id: unknown }, force = false): Promise<RefreshOutcome> {
-  if (!["pending", "processing"].includes(order.status) || !order.providerOrderId) return { checked: false, reason: "skipped" };
+  // Custom (manual) orders have no provider to ask; the admin closes them by hand.
+  if (!["pending", "processing"].includes(order.status) || !order.providerOrderId || !order.provider) {
+    return { checked: false, reason: "skipped" };
+  }
   if (!force && order.lastCheckedAt && Date.now() - new Date(order.lastCheckedAt).getTime() < REFRESH_AFTER_MS) {
     return { checked: false, reason: "skipped" };
   }
@@ -385,7 +429,7 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
   await RentOrder.updateOne({ _id: id }, { $set: { lastCheckedAt: new Date() } });
   let status;
   try {
-    const credentials = await getProviderCredentials(order.provider);
+    const credentials = await getProviderCredentials(order.provider!);
     status = await getProviderOrder(credentials, order.providerOrderId);
   } catch (error) {
     const message = (error as Error).message || String(error);
@@ -412,7 +456,28 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
   } else {
     await RentOrder.updateOne(open, { $set: { result: status.result, checkError: "", providerStatus: status.raw } });
   }
+  if (status.state === "completed" || status.state === "rejected") {
+    await hideSensitiveFields(id);
+    notifyOrderFinished(id);
+  }
   return { checked: true, ok: true, state: status.state, raw: status.raw };
+}
+
+const HIDDEN = "••••••";
+
+/**
+ * Once an order is finished, secrets the customer typed (e.g. a remote-access
+ * password) are replaced, so they do not stay readable in the database.
+ */
+export async function hideSensitiveFields(orderId: string): Promise<void> {
+  const order = await RentOrder.findById(orderId, { status: 1, sensitiveFields: 1, fields: 1 }).lean();
+  if (!order || !order.sensitiveFields?.length) return;
+  if (!["completed", "rejected", "failed"].includes(order.status)) return;
+  const set: Record<string, string> = {};
+  for (const name of order.sensitiveFields) {
+    if (order.fields?.[name] && order.fields[name] !== HIDDEN) set[`fields.${name}`] = HIDDEN;
+  }
+  if (Object.keys(set).length > 0) await RentOrder.updateOne({ _id: orderId }, { $set: set });
 }
 
 export interface ManualUpdate {
@@ -478,10 +543,34 @@ export async function updateOrderManually(orderId: string, update: ManualUpdate)
     ...(update.status !== order.status ? { $push: { statusHistory: { status: update.status, at: now } } } : {}),
   });
   if (saved.matchedCount === 0) throw new ApiError(409, "This order just changed. Reload and try again.");
+  await hideSensitiveFields(orderId);
+  notifyOrderFinished(orderId);
   return { refunded: false };
 }
 
 /** Refreshes a few stale open orders, oldest check first, without failing the caller. */
+/** Seconds after placing an order at which it is checked again with the provider. */
+const FOLLOW_UP_AFTER_S = [5, 15, 35];
+
+/**
+ * Checks a new order a few times shortly after it was placed (run with `after()`,
+ * once the customer already has the reply). Stops as soon as it is closed.
+ */
+export async function followUpOrder(orderId: string): Promise<void> {
+  let waited = 0;
+  for (const at of FOLLOW_UP_AFTER_S) {
+    await new Promise((resolve) => setTimeout(resolve, (at - waited) * 1000));
+    waited = at;
+    try {
+      const order = await RentOrder.findById(orderId).lean();
+      if (!order || order.manual || !["pending", "processing"].includes(order.status)) return;
+      await refreshOrder(order, true);
+    } catch (error) {
+      console.error("[rent] Follow-up check failed", orderId, error);
+    }
+  }
+}
+
 export async function refreshOpenOrders(filter: Record<string, unknown>, limit = 5): Promise<void> {
   const open = await RentOrder.find({ ...filter, status: { $in: ["pending", "processing"] } })
     .sort({ lastCheckedAt: 1 })

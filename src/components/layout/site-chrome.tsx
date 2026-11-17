@@ -3,11 +3,11 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { Navbar } from "@/components/layout/navbar";
 import { SocialLinkList } from "@/components/ui/social-icons";
-import { getSettings } from "@/lib/data";
+import { getServiceCategories, getSettings } from "@/lib/data";
 import { telegramLink, whatsappLink } from "@/utils/format";
 
 export async function SiteNavbar() {
-  const settings = await getSettings();
+  const [settings, categories] = await Promise.all([getSettings(), getServiceCategories()]);
   const { siteName, tagline, logo } = settings;
   return (
     <Navbar
@@ -18,6 +18,7 @@ export async function SiteNavbar() {
           ? whatsappLink(settings.whatsappNumber, `Hi ${siteName}, I'd like to hire you.`)
           : null,
         telegramUrl: settings.telegramUsername ? telegramLink(settings.telegramUsername) : null,
+        categories,
       }}
     />
   );

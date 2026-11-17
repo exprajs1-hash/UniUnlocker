@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { categoryHref } from "@/components/rent/categories";
 import { fetchMe } from "@/components/rent/rent-catalog";
 import { formatBdt, PriceTag, ToolIcon } from "@/components/rent/shared";
 import { useToast } from "@/components/ui/toast";
@@ -86,7 +87,7 @@ export function RentServiceDetail({ id }: { id: string }) {
         <div className="relative">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
-              href="/services"
+              href={categoryHref(service.category)}
               className="inline-flex items-center gap-1.5 rounded-full border border-glass/20 bg-glass/5 px-3 py-1.5 text-xs font-medium hover:bg-glass/10"
             >
               <ArrowLeft aria-hidden className="size-3.5" /> Back to Services
@@ -260,7 +261,12 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
                 ))}
               </select>
             ) : (
-              <input {...common} type="text" maxLength={300} placeholder={`Enter ${field.name}`} />
+              <input {...common} type="text" maxLength={300} autoComplete="off" placeholder={`Enter ${field.name}`} />
+            )}
+            {field.sensitive && (
+              <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted">
+                <Lock aria-hidden className="size-3" /> Only used for this order and hidden once it is finished.
+              </p>
             )}
             {fieldError && <p className="mt-1 text-xs text-status-offline">{fieldError}</p>}
           </div>

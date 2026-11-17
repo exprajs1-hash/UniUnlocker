@@ -7,12 +7,16 @@ export interface IRentCustomField {
   required: boolean;
   /** Sent to the provider as the IMEI, not as a custom field. */
   imei?: boolean;
+  /** A secret (e.g. remote-access password): hidden in the order once it is finished. */
+  sensitive?: boolean;
 }
 
 /** A provider service, copied in by "Sync from provider". Hidden until the admin enables it. */
 export interface IRentService {
-  /** Which provider sells this service. */
-  provider: Types.ObjectId;
+  /** Which provider sells this service; null for a custom (manual) service. */
+  provider: Types.ObjectId | null;
+  /** Made by the admin and delivered by hand: orders wait for the admin instead of going to a provider. */
+  manual: boolean;
   /** The provider's own service id; unique only within one provider. */
   serviceId: number;
   /** Name from the provider; `title` overrides it on the website when set. */
@@ -52,7 +56,8 @@ export interface IRentService {
 
 const RentServiceSchema = new Schema<IRentService>(
   {
-    provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true },
+    provider: { type: Schema.Types.ObjectId, ref: "Provider", default: null },
+    manual: { type: Boolean, default: false },
     serviceId: { type: Number, required: true },
     name: { type: String, required: true, trim: true },
     title: { type: String, default: "", trim: true },
@@ -75,6 +80,7 @@ const RentServiceSchema = new Schema<IRentService>(
         options: [String],
         required: Boolean,
         imei: { type: Boolean, default: false },
+        sensitive: { type: Boolean, default: false },
       },
     ],
     minQuantity: { type: Number, default: 1 },

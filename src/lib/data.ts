@@ -7,15 +7,27 @@ import { DEFAULT_ABOUT, DEFAULT_SETTINGS } from "@/lib/defaults";
 import { connectToDatabase } from "@/lib/mongodb";
 import { withConvertedPrices } from "@/lib/pricing";
 import { serialize, serializeMany } from "@/lib/serialize";
+import { BUILT_IN_CATEGORIES } from "@/lib/service-categories";
 import { About } from "@/models/About";
 import { Banner } from "@/models/Banner";
 import { Partner } from "@/models/Partner";
 import { Project } from "@/models/Project";
 import { Server } from "@/models/Server";
 import { Service } from "@/models/Service";
+import { ServiceCategory } from "@/models/ServiceCategory";
 import { Tool } from "@/models/Tool";
 import { WebsiteSettings } from "@/models/WebsiteSettings";
-import type { AboutDTO, BannerDTO, PartnerDTO, ProjectDTO, ServerDTO, ServiceDTO, ToolDTO, WebsiteSettingsDTO } from "@/types";
+import type {
+  AboutDTO,
+  BannerDTO,
+  PartnerDTO,
+  ProjectDTO,
+  ServerDTO,
+  ServiceCategoryDTO,
+  ServiceDTO,
+  ToolDTO,
+  WebsiteSettingsDTO,
+} from "@/types";
 
 /**
  * Public read layer. Each read is cached with `use cache` and tagged (see
@@ -151,6 +163,19 @@ async function cachedProjectBySlug(slug: string): Promise<ProjectDTO | null> {
   return doc ? serialize<ProjectDTO>(doc) : null;
 }
 
+/** Built-in categories first, then the admin's enabled ones in their order. */
+async function cachedServiceCategories(): Promise<ServiceCategoryDTO[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CACHE_TAGS.serviceCategories);
+  await connectToDatabase();
+  const custom = await ServiceCategory.find({ enabled: true }).sort({ displayOrder: 1, createdAt: 1 }).lean();
+  return [
+    ...BUILT_IN_CATEGORIES,
+    ...custom.map((doc) => ({ ...serialize<ServiceCategoryDTO>(doc), builtIn: false, description: doc.description ?? "" })),
+  ];
+}
+
 export const getSettings = cache(() => readOrFallback("settings", cachedSettings, DEFAULT_SETTINGS));
 
 export const getAbout = cache(() => readOrFallback("about", cachedAbout, DEFAULT_ABOUT));
@@ -172,4 +197,8 @@ export const getPublishedProjects = cache(() => readOrFallback<ProjectDTO[]>("pr
 
 export const getPublishedProjectBySlug = cache((slug: string) =>
   readOrFallback<ProjectDTO | null>("project", () => cachedProjectBySlug(slug), null),
+);
+
+export const getServiceCategories = cache(() =>
+  readOrFallback<ServiceCategoryDTO[]>("service categories", cachedServiceCategories, BUILT_IN_CATEGORIES),
 );

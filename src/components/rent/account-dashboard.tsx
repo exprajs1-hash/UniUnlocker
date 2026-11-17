@@ -15,7 +15,6 @@ import {
   RefreshCw,
   ShoppingBag,
   ShoppingCart,
-  Trash2,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -62,7 +61,7 @@ interface Me {
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
-/** The customer's photo with a camera button to change it and a small button to remove it. */
+/** The customer's photo; clicking it uploads a new one. */
 function ProfilePhoto({ me, onChange }: { me: Me; onChange: (avatar: string) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -98,51 +97,31 @@ function ProfilePhoto({ me, onChange }: { me: Me; onChange: (avatar: string) => 
     }
   }
 
-  async function remove() {
-    setBusy(true);
-    try {
-      await apiFetch("/api/me/avatar", { method: "DELETE" });
-      onChange("");
-      toast.success("Profile photo removed.");
-    } catch (error) {
-      toast.error(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <div className="relative shrink-0">
-      <CustomerAvatar src={me.avatar} name={me.name} size={64} />
-      {busy && (
-        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
-          <Loader aria-hidden className="size-5 animate-spin text-white" />
-        </span>
-      )}
+    <>
+      {/* The whole photo is the button: clicking it opens the file picker. */}
       <button
         type="button"
         disabled={busy}
         onClick={() => input.current?.click()}
         aria-label={me.avatar ? "Change profile photo" : "Upload profile photo"}
         title={me.avatar ? "Change photo" : "Upload photo"}
-        className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-white shadow transition hover:bg-purple disabled:opacity-60"
+        className="group relative shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-wait"
       >
-        <Camera aria-hidden className="size-3.5" />
-      </button>
-      {me.avatar && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void remove()}
-          aria-label="Remove profile photo"
-          title="Remove photo"
-          className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border-2 border-background bg-status-offline text-white shadow transition hover:opacity-90 disabled:opacity-60"
+        <CustomerAvatar src={me.avatar} name={me.name} size={64} />
+        <span
+          className={`absolute inset-0 flex items-center justify-center rounded-full bg-black/50 transition ${
+            busy ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
         >
-          <Trash2 aria-hidden className="size-3" />
-        </button>
-      )}
+          {busy ? <Loader aria-hidden className="size-5 animate-spin text-white" /> : <Camera aria-hidden className="size-5 text-white" />}
+        </span>
+        <span className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-white shadow">
+          <Camera aria-hidden className="size-3.5" />
+        </span>
+      </button>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void upload(event)} className="hidden" />
-    </div>
+    </>
   );
 }
 

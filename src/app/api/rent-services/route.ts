@@ -1,6 +1,10 @@
-import { adminRoute, json } from "@/lib/api";
+import { adminRoute, ApiError, json, readJson } from "@/lib/api";
+import { connectToDatabase } from "@/lib/mongodb";
 import { migrateLegacyProvider } from "@/lib/providers";
 import { getPricing, providerNameMap, toAdminService, toRentConfigDTO } from "@/lib/rent";
+import { isBuiltInCategory } from "@/lib/service-categories";
+import { manualServiceSchema } from "@/lib/validations";
+import { ServiceCategory } from "@/models/ServiceCategory";
 import { RentOrder } from "@/models/RentOrder";
 import { RentService } from "@/models/RentService";
 import type { RentLastOrderDTO, RentOrderStatus } from "@/types";
@@ -50,4 +54,34 @@ export const GET = adminRoute(async () => {
     config: toRentConfigDTO(pricing),
     rate: pricing.rate,
   });
+});
+
+/**
+ * Creates a custom (manual) service: no provider, the admin delivers it by hand.
+ * Orders on it wait as "pending" until the admin completes or rejects them.
+ */
+export const POST = adminRoute(async (request) => {
+  const data = manualServiceSchema.parse(await readJson(request));
+  await connectToDatabase();
+  if (!isBuiltInCategory(data.category) && !(await ServiceCategory.exists({ slug: data.category }))) {
+    throw new ApiError(422, "Please check the highlighted fields.", undefined, { category: "This category no longer exists" });
+  }
+  // Custom services are numbered 1, 2, 3… among themselves (shown to customers as "ID #").
+  const last = await RentService.findOne({ manual: true }, { serviceId: 1 }).sort({ serviceId: -1 }).lean();
+  const created = await RentService.create({
+    ...data,
+    customFields: data.customFields.map((field) => ({ ...field, type: field.options.length > 0 ? "select" : "text" })),
+    provider: null,
+    manual: true,
+    serviceId: (last?.serviceId ?? 0) + 1,
+    type: "MANUAL",
+    group: "",
+    costUsd: 0,
+    costCurrency: "BDT",
+    minQuantity: 1,
+    maxQuantity: 1,
+    availableOnProvider: true,
+  });
+  const [pricing, names] = await Promise.all([getPricing(), providerNameMap()]);
+  return json({ service: toAdminService(created.toObject(), pricing, names) }, 201);
 });

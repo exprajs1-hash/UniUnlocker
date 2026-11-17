@@ -122,7 +122,8 @@ export function RentOrdersManager() {
                         <RelativeTime iso={order.createdAt} />
                       </p>
                       <p className="text-xs text-admin-muted">
-                        Charged {formatBdt(order.priceBdt)} · cost {formatCost(order.costUsd, order.costCurrency)} ·{order.providerName} service #{order.serviceId}
+                        Charged {formatBdt(order.priceBdt)}
+                        {!order.manual && <> · cost {formatCost(order.costUsd, order.costCurrency)}</>} ·{order.providerName} service #{order.serviceId}
                         {order.providerOrderId && ` · provider order #${order.providerOrderId}`}
                       </p>
                       {open && order.providerOrderId && (
@@ -141,6 +142,9 @@ export function RentOrdersManager() {
                     </div>
                     <span className="inline-flex flex-wrap items-center gap-1.5">
                       <OrderStatusBadge status={order.status} refunded={order.refunded} />
+                      {order.manual && (
+                        <span className="rounded-full bg-purple/15 px-2.5 py-0.5 text-xs font-semibold text-purple">Custom: deliver by hand</span>
+                      )}
                       {order.manualAt && (
                         <span className="rounded-full bg-glass/10 px-2.5 py-0.5 text-xs font-semibold" title={`Updated by hand ${order.manualAt}`}>
                           Manual

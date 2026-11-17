@@ -1,4 +1,5 @@
 import { adminRoute, json, parseObjectId, readJson, type IdContext } from "@/lib/api";
+import { notifyDeposit } from "@/lib/notifications";
 import { changeBalance } from "@/lib/rent";
 import { balanceAdjustSchema } from "@/lib/validations";
 
@@ -8,5 +9,6 @@ export const POST = adminRoute<IdContext>(async (request, { params }) => {
   const { amount, note } = balanceAdjustSchema.parse(await readJson(request));
   const fallbackNote = amount > 0 ? "Balance added by admin" : "Balance deducted by admin";
   const balance = await changeBalance(id, amount, amount > 0 ? "admin_credit" : "admin_debit", note || fallbackNote);
+  if (amount > 0) notifyDeposit(id, amount, balance, note);
   return json({ balance });
 });

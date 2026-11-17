@@ -4,6 +4,7 @@ import { BadgeCheck, Check, Copy, Crown, Gem, Globe, Store, User, Wrench } from 
 import { useState } from "react";
 import { SafeImage } from "@/components/ui/safe-image";
 import { isUsableImageUrl } from "@/lib/images";
+import { formatTaka } from "@/lib/money";
 import { parseResultLines } from "@/lib/provider-text";
 import { CUSTOMER_TAG_LABELS, type BalanceTransactionType, type CustomerTag, type RentOrderStatus } from "@/types";
 
@@ -23,11 +24,8 @@ export function ToolIcon({ src, name, size = 40 }: { src: string; name: string; 
   );
 }
 
-const BDT = new Intl.NumberFormat("en-BD", { maximumFractionDigits: 0 });
-
-export function formatBdt(amount: number): string {
-  return `৳${BDT.format(amount)}`;
-}
+/** "৳117" for whole taka, "৳0.50" / "৳116.27" when there are paisa. */
+export const formatBdt = formatTaka;
 
 /** The customer's price, with the public price struck through when they have a special (lower) rate. */
 export function PriceTag({ price, regular }: { price: number; regular?: number }) {

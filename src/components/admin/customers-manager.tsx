@@ -17,6 +17,7 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
+import { isMoney } from "@/lib/money";
 import {
   CUSTOMER_TAG_LABELS,
   CUSTOMER_TAGS,
@@ -40,8 +41,8 @@ function BalanceForm({ customer, onDone }: { customer: CustomerDTO; onDone: (bal
   async function submit(event: FormEvent) {
     event.preventDefault();
     const value = Number(amount);
-    if (!amount || !Number.isInteger(value) || value <= 0) {
-      setErrors({ amount: "Enter a whole number of taka above 0" });
+    if (!amount || !isMoney(value) || value <= 0) {
+      setErrors({ amount: "Enter an amount above 0, with at most 2 decimals (e.g. 0.50)" });
       return;
     }
     setBusy(true);

@@ -3,8 +3,14 @@ import { RENT_ORDER_STATUSES, type RentOrderStatus } from "@/types";
 
 export interface IRentOrder {
   customer: Types.ObjectId;
-  /** The provider the order was placed with, used for status checks. */
-  provider: Types.ObjectId;
+  /** The provider the order was placed with, used for status checks; null for a custom service. */
+  provider: Types.ObjectId | null;
+  /** Placed on a custom service: the admin delivers it by hand. */
+  manual: boolean;
+  /** Fields hidden ("••••") once the order is finished, e.g. a remote-access password. */
+  sensitiveFields: string[];
+  /** The last status the customer was emailed about, so each email goes out once. */
+  notifiedStatus: string;
   /** Snapshot at order time, so later price or name edits do not change history. */
   serviceId: number;
   serviceName: string;
@@ -37,7 +43,10 @@ export interface IRentOrder {
 const RentOrderSchema = new Schema<IRentOrder>(
   {
     customer: { type: Schema.Types.ObjectId, ref: "Customer", required: true, index: true },
-    provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true },
+    provider: { type: Schema.Types.ObjectId, ref: "Provider", default: null },
+    manual: { type: Boolean, default: false },
+    sensitiveFields: { type: [String], default: [] },
+    notifiedStatus: { type: String, default: "" },
     serviceId: { type: Number, required: true },
     serviceName: { type: String, required: true },
     quantity: { type: Number, default: 1 },

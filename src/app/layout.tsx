@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Great_Vibes, Montserrat, Poppins } from "next/font/google";
+import { Great_Vibes, Plus_Jakarta_Sans, Sora } from "next/font/google";
 import { ToastProvider } from "@/components/ui/toast";
 import { SEO_KEYWORDS, SITE_URL } from "@/lib/seo";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-// Poppins everywhere: 800 main headings, 700 section headings, 500 body/descriptions, 400 normal text
-// (600 is kept for the existing font-semibold labels). Montserrat is the fallback heading font.
-const body = Poppins({ variable: "--font-body", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
-const headingAlt = Montserrat({ variable: "--font-heading-alt", subsets: ["latin"], weight: ["700", "800"] });
+// Plus Jakarta Sans for text (friendly and easy to read), Sora for headings (bold, modern, techy).
+const body = Plus_Jakarta_Sans({ variable: "--font-body", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
+const headingAlt = Sora({ variable: "--font-heading-alt", subsets: ["latin"], weight: ["600", "700", "800"] });
 const signature = Great_Vibes({ variable: "--font-signature", subsets: ["latin"], weight: "400" });
 
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;

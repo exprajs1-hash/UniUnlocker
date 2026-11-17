@@ -1,14 +1,15 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, TextField, Toggle } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/image-field";
+import { SortableList } from "@/components/admin/sortable";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { SafeImage } from "@/components/ui/safe-image";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
-import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf, moved } from "@/lib/client-api";
+import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
 import type { ToolDTO } from "@/types";
 
 type Draft = Pick<ToolDTO, "name" | "logo" | "url" | "displayOrder" | "enabled">;
@@ -108,9 +109,7 @@ export function ToolsManager() {
     }
   }
 
-  async function move(index: number, direction: -1 | 1) {
-    const next = moved(tools, index, direction);
-    if (!next) return;
+  async function saveOrder(next: ToolDTO[]) {
     setData(() => ({ tools: next }));
     try {
       await apiFetch("/api/tools/reorder", { method: "POST", body: { ids: next.map((t) => t.id) } });
@@ -154,9 +153,15 @@ export function ToolsManager() {
       ) : tools.length === 0 ? (
         <AdminEmpty title="No tools yet" message="Add a tool logo to show it on the website." />
       ) : (
-        <ul className="space-y-3">
-          {tools.map((tool, index) => (
-            <li key={tool.id} className={`admin-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center ${tool.enabled ? "" : "opacity-65"}`}>
+        <SortableList
+          items={tools}
+          onCommit={(next) => void saveOrder(next)}
+          label={(tool) => tool.name}
+          className="space-y-3"
+          itemClassName={(tool) => `admin-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center ${tool.enabled ? "" : "opacity-65"}`}
+        >
+          {(tool, handle) => (
+            <>
               <SafeImage src={tool.logo} alt="" width={88} height={44} className="h-11 w-22 shrink-0 rounded-lg bg-admin-bg object-contain p-1" />
               <div className="min-w-0 flex-1">
                 <h2 className="truncate font-medium">{tool.name}</h2>
@@ -170,12 +175,7 @@ export function ToolsManager() {
               </div>
               <div className="flex items-center gap-2">
                 <Toggle label={`Show ${tool.name} on the website`} hideLabel checked={tool.enabled} onChange={(value) => void toggle(tool, value)} />
-                <button type="button" aria-label={`Move ${tool.name} up`} disabled={index === 0} onClick={() => void move(index, -1)} className="admin-icon-btn">
-                  <ArrowUp aria-hidden className="size-4" />
-                </button>
-                <button type="button" aria-label={`Move ${tool.name} down`} disabled={index === tools.length - 1} onClick={() => void move(index, 1)} className="admin-icon-btn">
-                  <ArrowDown aria-hidden className="size-4" />
-                </button>
+                {handle}
                 <button type="button" aria-label={`Edit ${tool.name}`} onClick={() => setEditing(tool)} className="admin-icon-btn">
                   <Pencil aria-hidden className="size-4" />
                 </button>
@@ -183,9 +183,9 @@ export function ToolsManager() {
                   <Trash2 aria-hidden className="size-4" />
                 </button>
               </div>
-            </li>
-          ))}
-        </ul>
+            </>
+          )}
+        </SortableList>
       )}
 
       <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "Add tool" : "Edit tool"}>

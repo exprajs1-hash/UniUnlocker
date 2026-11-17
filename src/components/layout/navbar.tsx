@@ -1,13 +1,16 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Menu, Send, UserRound, Wrench, X } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LayoutGrid, LogIn, Menu, Send, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { categoryHref, categoryIcon } from "@/components/rent/categories";
+import { CustomerAvatar } from "@/components/rent/shared";
+import { formatTaka } from "@/lib/money";
 import { BrandIcon } from "@/components/ui/social-icons";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import type { UtilityLink } from "@/types";
+import type { ServiceCategoryDTO, UtilityLink } from "@/types";
 
 const LINKS = [
   { id: "home", label: "Home" },
@@ -19,6 +22,8 @@ export interface HeaderActions {
   utilityLinks: UtilityLink[];
   whatsappUrl: string | null;
   telegramUrl: string | null;
+  /** Built-in and admin-made service categories, for the Services menu. */
+  categories: ServiceCategoryDTO[];
 }
 
 const CHAT_STYLES = {
@@ -55,11 +60,17 @@ function HoverMenu({
   label,
   icon,
   buttonClass,
+  align = "right",
+  plain = false,
   children,
 }: {
   label: string;
   icon: ReactNode;
   buttonClass: string;
+  /** Which edge of the button the panel lines up with. */
+  align?: "left" | "right";
+  /** Use `buttonClass` as is, without the pill button sizing. */
+  plain?: boolean;
   /** Receives a function that closes the menu, for links inside it. */
   children: (close: () => void) => ReactNode;
 }) {
@@ -94,7 +105,7 @@ function HoverMenu({
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className={`${buttonClass} min-h-10! px-5! text-sm`}
+        className={plain ? buttonClass : `${buttonClass} min-h-10! px-5! text-sm`}
       >
         {label} {icon}
       </button>
@@ -106,7 +117,7 @@ function HoverMenu({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 z-50 pt-2"
+            className={`absolute top-full z-50 pt-2 ${align === "left" ? "left-0" : "right-0"}`}
           >
             <div className="rounded-2xl border border-line/60 bg-surface/95 p-2 shadow-(--menu-shadow) backdrop-blur-md">
               {children(() => setOpen(false))}
@@ -165,40 +176,104 @@ function UtilityMenu({ links }: { links: UtilityLink[] }) {
   );
 }
 
-/** Link to the Tool Rent page, styled to stand out from the plain nav links. */
-function ToolRentBadge({ onClick }: { onClick?: () => void }) {
+/** "Services" in the main nav: a dropdown with one page per service type. */
+function ServicesMenu({ buttonClass, categories }: { buttonClass: string; categories: ServiceCategoryDTO[] }) {
   return (
-    <Link
-      href="/services"
-      onClick={onClick}
-      className="relative inline-flex items-center gap-2 rounded-full bg-linear-to-r from-cyan via-primary to-purple p-px shadow-[0_0_18px_rgb(121_44_255/0.45)] transition hover:shadow-[0_0_26px_rgb(0_229_255/0.6)]"
-    >
-      <span className="inline-flex items-center gap-2 rounded-full bg-background px-3.5 py-2 text-sm font-semibold whitespace-nowrap">
-        <span aria-hidden className="relative flex size-2">
-          <span className="absolute inline-flex size-full rounded-full bg-cyan opacity-75 motion-safe:animate-ping" />
-          <span className="relative inline-flex size-2 rounded-full bg-cyan" />
-        </span>
-        Services
-      </span>
-    </Link>
+    <HoverMenu label="Services" icon={<ChevronDown aria-hidden className="size-4" />} buttonClass={buttonClass} align="left" plain>
+      {(close) => (
+        <ul className="max-h-[70vh] w-60 overflow-y-auto">
+          {categories.map(({ slug, name, icon }) => {
+            const Icon = categoryIcon(icon);
+            return (
+              <li key={slug}>
+                <Link
+                  href={categoryHref(slug)}
+                  onClick={close}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-primary/15 hover:text-cyan"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary to-purple text-white">
+                    <Icon aria-hidden className="size-4" />
+                  </span>
+                  {name}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </HoverMenu>
   );
 }
 
-function AccountLink({ onClick, withLabel }: { onClick?: () => void; withLabel?: boolean }) {
+interface HeaderCustomer {
+  name: string;
+  balance: number;
+  avatar?: string;
+}
+
+/** The signed-in customer for the header, or null. Never redirects (unlike apiFetch on a 401). */
+function useHeaderCustomer(pathname: string): HeaderCustomer | null | undefined {
+  const [customer, setCustomer] = useState<HeaderCustomer | null | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/me", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { customer: HeaderCustomer } | null) => active && setCustomer(data?.customer ?? null))
+      .catch(() => active && setCustomer(null));
+    return () => {
+      active = false;
+    };
+    // Re-read on navigation, so the balance is fresh after an order or a sign-in.
+  }, [pathname]);
+  return customer;
+}
+
+/** "Dashboard" (photo, name, balance) when signed in; "Login" otherwise. */
+function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer | null | undefined; onClick?: () => void; mobile?: boolean }) {
+  if (mobile) {
+    return (
+      <Link href={customer ? "/account" : "/login"} onClick={onClick} className="flex items-center gap-3 py-3 font-medium hover:text-cyan">
+        {customer ? (
+          <>
+            <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">Dashboard</span>
+              <span className="block text-xs font-semibold text-cyan">Balance {formatTaka(customer.balance)}</span>
+            </span>
+          </>
+        ) : (
+          <>
+            <LogIn aria-hidden className="size-5" /> Login / Register
+          </>
+        )}
+      </Link>
+    );
+  }
+  if (customer === undefined) {
+    // Still loading: keep the space so the header does not jump.
+    return <span aria-hidden className="block h-10 w-28 animate-pulse rounded-full bg-glass/10" />;
+  }
+  if (!customer) {
+    return (
+      <Link href="/login" onClick={onClick} className="btn-outline min-h-10! px-4! text-sm">
+        <LogIn aria-hidden className="size-4" /> Login
+      </Link>
+    );
+  }
   return (
     <Link
       href="/account"
       onClick={onClick}
-      aria-label={withLabel ? undefined : "My account"}
-      title="My account"
-      className={
-        withLabel
-          ? "flex items-center gap-2 py-3 font-medium hover:text-cyan"
-          : "flex size-10 items-center justify-center rounded-full border border-line/60 transition hover:border-cyan hover:text-cyan"
-      }
+      title="My dashboard"
+      className="flex items-center gap-2 rounded-full border border-line/60 py-1 pr-4 pl-1 transition hover:border-cyan"
     >
-      <UserRound aria-hidden className="size-5" />
-      {withLabel && "My account"}
+      <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
+      <span className="leading-tight">
+        <span className="flex items-center gap-1 text-sm font-semibold">
+          <LayoutDashboard aria-hidden className="size-3.5" /> Dashboard
+        </span>
+        <span className="block text-xs font-bold text-cyan tabular-nums">{formatTaka(customer.balance)}</span>
+      </span>
     </Link>
   );
 }
@@ -209,6 +284,8 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
   const [active, setActive] = useState("home");
   const pathname = usePathname();
   const onHome = pathname === "/";
+  const onServices = pathname.startsWith("/services");
+  const customer = useHeaderCustomer(pathname);
 
   // Sections stream in after hydration, so a MutationObserver picks up late arrivals.
   useEffect(() => {
@@ -258,11 +335,15 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
               </Link>
             </li>
           ))}
-          {/* The Services (rent) badge only fits from xl; below that it is a plain link. */}
-          <li className="xl:hidden">
-            <Link href="/services" aria-current={pathname === "/services" ? "page" : undefined} className={linkClass("rent")}>
-              Rent
-            </Link>
+          <li>
+            <ServicesMenu
+              categories={actions.categories}
+              buttonClass={`inline-flex items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+                onServices
+                  ? "bg-linear-to-r from-primary to-[#00b4ff] text-white shadow-[0_0_16px_rgb(8_123_255/0.6)]"
+                  : "text-foreground/85 hover:text-cyan"
+              }`}
+            />
           </li>
         </ul>
 
@@ -271,13 +352,9 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
             {chats.length > 0 && <HireMeMenu options={chats} />}
             {actions.utilityLinks.length > 0 && <UtilityMenu links={actions.utilityLinks} />}
           </div>
-          {/* Only on wide screens: next to the nav links it would crowd the header below xl. */}
-          <div className="hidden xl:block">
-            <ToolRentBadge />
-          </div>
           <ThemeToggle className="flex size-10 items-center justify-center rounded-full border border-line/60 transition hover:border-cyan hover:text-cyan" />
           <div className="hidden sm:block">
-            <AccountLink />
+            <AccountLink customer={customer} />
           </div>
           <button
             type="button"
@@ -309,11 +386,31 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
                 </Link>
               </li>
             ))}
-            <li className="border-t border-line/30 py-4">
-              <ToolRentBadge onClick={() => setOpen(false)} />
+            <li className="border-t border-line/30 py-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-muted">
+                <LayoutGrid aria-hidden className="size-4" /> Services
+              </p>
+              <ul className="mt-1">
+                {actions.categories.map(({ slug, name, icon }) => {
+                  const Icon = categoryIcon(icon);
+                  return (
+                    <li key={slug}>
+                      <Link
+                        href={categoryHref(slug)}
+                        onClick={() => setOpen(false)}
+                        aria-current={pathname === categoryHref(slug) ? "page" : undefined}
+                        className="flex items-center gap-3 py-2.5 pl-1 font-medium hover:text-cyan aria-[current=page]:text-cyan"
+                      >
+                        <Icon aria-hidden className="size-4 text-cyan" />
+                        {name}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             </li>
             <li className="border-t border-line/30">
-              <AccountLink withLabel onClick={() => setOpen(false)} />
+              <AccountLink customer={customer} mobile onClick={() => setOpen(false)} />
             </li>
             {/* The header buttons are hidden on small phones, so they are offered here instead. */}
             {chats.length > 0 && (

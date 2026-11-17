@@ -1,29 +1,12 @@
 "use client";
 
-import {
-  ArrowRight,
-  Clock,
-  KeyRound,
-  LayoutGrid,
-  List,
-  LogIn,
-  RotateCcw,
-  Search,
-  Server,
-  Smartphone,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, Clock, LayoutGrid, List, LogIn, RotateCcw, Search, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { CategoryIcon, categoryHref, categoryIcon } from "@/components/rent/categories";
 import { formatBdt, PriceTag, ToolIcon } from "@/components/rent/shared";
 import { apiFetch, ApiClientError, errorMessage } from "@/lib/client-api";
-import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type PublicRentServiceDTO, type RentCategory } from "@/types";
-
-const CATEGORY_ICONS: Record<RentCategory, typeof KeyRound> = {
-  rent: KeyRound,
-  imei: Smartphone,
-  server: Server,
-};
+import type { PublicRentServiceDTO, ServiceCategoryDTO } from "@/types";
 
 interface Me {
   name: string;
@@ -54,20 +37,9 @@ function DeliveryBadge({ text }: { text: string }) {
 }
 
 /** Per-tab header copy: "Premium <highlight> Services" plus a one-line description. */
-const HERO: Record<RentCategory, { highlight: string; subtitle: string }> = {
-  rent: {
-    highlight: "Tools Rent",
-    subtitle: "Rent premium unlock and repair tools by the hour. Login details are delivered fast and paid from your balance.",
-  },
-  imei: {
-    highlight: "IMEI",
-    subtitle: "Official IMEI unlock, check and repair services for every major brand. Fast delivery, guaranteed results.",
-  },
-  server: {
-    highlight: "Server",
-    subtitle: "Server credits, activations and remote services, processed quickly and paid straight from your balance.",
-  },
-};
+/** Shorter typewriter words for the built-in categories; an admin-made category uses its name. */
+const HERO_WORD: Record<string, string> = { rent: "Tools Rent", imei: "IMEI", server: "Server" };
+const DEFAULT_SUBTITLE = "Fast, reliable services paid straight from your balance.";
 
 const TYPE_MS = 150;
 
@@ -111,9 +83,9 @@ function Typewriter({ text, className = "" }: { text: string; className?: string
   );
 }
 
-function ServicesHero({ category, count }: { category: RentCategory; count: number | null }) {
-  const { highlight, subtitle } = HERO[category];
-  const Icon = CATEGORY_ICONS[category];
+function ServicesHero({ category, count }: { category: ServiceCategoryDTO; count: number | null }) {
+  const highlight = HERO_WORD[category.slug] ?? category.name;
+  const subtitle = category.description || DEFAULT_SUBTITLE;
   const stats = [
     { value: count === null ? "—" : String(count), label: "Services" },
     { value: "24/7", label: "Support" },
@@ -126,9 +98,9 @@ function ServicesHero({ category, count }: { category: RentCategory; count: numb
       <span aria-hidden className="pointer-events-none absolute -right-16 -bottom-20 size-64 rounded-full bg-primary/20 blur-3xl" />
 
       {/* Keyed on the tab so the copy animates in again on every switch. */}
-      <div key={category} className="relative motion-safe:animate-[hero-in_0.45s_ease-out]">
+      <div key={category.slug} className="relative motion-safe:animate-[hero-in_0.45s_ease-out]">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-purple/30 bg-purple/10 px-3 py-1 text-xs font-semibold text-purple">
-          <Icon aria-hidden className="size-3.5" />
+          <CategoryIcon name={category.icon} className="size-3.5" />
           {count === null ? "Premium services" : `${count}${count >= 10 ? "+" : ""} Premium Services Available`}
         </span>
         <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl lg:text-[56px] lg:leading-14">
@@ -158,28 +130,24 @@ function MinQtyBadge({ value }: { value: number }) {
   return <span className="rounded-lg bg-purple/15 px-2 py-1 text-xs font-semibold text-purple">#{value}</span>;
 }
 
-export function RentCatalog() {
+/** The catalog for one category. Each category is its own page; the tabs link between them. */
+export function RentCatalog({ category, categories }: { category: ServiceCategoryDTO; categories: ServiceCategoryDTO[] }) {
   const [services, setServices] = useState<PublicRentServiceDTO[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("");
   const [view, setView] = useState<View>("list");
-  const [category, setCategory] = useState<RentCategory>("rent");
 
   useEffect(() => {
     let active = true;
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (RENT_CATEGORIES.includes(tab as RentCategory)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
-      setCategory(tab as RentCategory);
-    }
     apiFetch<{ services: PublicRentServiceDTO[] }>("/api/rent/services")
       .then((data) => active && setServices(data.services))
       .catch((error: unknown) => active && setLoadError(error instanceof ApiClientError ? error.message : errorMessage(error)));
     void fetchMe().then((value) => active && setMe(value));
     try {
       const saved = localStorage.getItem(VIEW_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reading browser storage after mount
       if (saved === "grid" || saved === "list") setView(saved);
     } catch {
       // Storage can be blocked; the default view is fine.
@@ -199,8 +167,7 @@ export function RentCatalog() {
   }
 
   // All three sections are always shown; an empty one says so until the admin enables services in it.
-  const categories = RENT_CATEGORIES;
-  const activeCategory: RentCategory = category;
+  const activeCategory = category.slug;
   const inCategory = useMemo(
     () => (services ?? []).filter((service) => service.category === activeCategory),
     [services, activeCategory],
@@ -216,52 +183,42 @@ export function RentCatalog() {
     );
   }, [inCategory, query, group]);
 
-  function changeCategory(next: RentCategory) {
-    setCategory(next);
-    setGroup("");
-    // Keep the tab in the URL so it can be shared/bookmarked, without a navigation.
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", next);
-    window.history.replaceState(null, "", url);
-  }
-
   return (
     <div>
-      <ServicesHero category={activeCategory} count={services ? inCategory.length : null} />
+      <ServicesHero category={category} count={services ? inCategory.length : null} />
 
       {/* Sections */}
       {services !== null && (
-        <div
-          role="tablist"
+        <nav
           aria-label="Service type"
-          className="mb-6 grid grid-cols-3 gap-1 rounded-2xl border border-line/50 p-1"
+          className={`mb-6 gap-1 rounded-2xl border border-line/50 p-1 ${
+            categories.length <= 3 ? "grid grid-cols-3" : "flex snap-x overflow-x-auto [scrollbar-width:none]"
+          }`}
         >
-          {categories.map((value) => {
-            const Icon = CATEGORY_ICONS[value];
-            const selected = value === activeCategory;
-            const count = (services ?? []).filter((service) => service.category === value).length;
+          {categories.map(({ slug, name, icon }) => {
+            const Icon = categoryIcon(icon);
+            const selected = slug === activeCategory;
+            const count = (services ?? []).filter((service) => service.category === slug).length;
             return (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => changeCategory(value)}
-                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-semibold transition sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm ${
+              <Link
+                key={slug}
+                href={categoryHref(slug)}
+                aria-current={selected ? "page" : undefined}
+                className={`flex ${categories.length <= 3 ? "min-w-0" : "min-w-28 shrink-0 snap-start"} flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-semibold transition sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm ${
                   selected ? "bg-primary text-white shadow-lg shadow-primary/30" : "text-muted hover:text-foreground"
                 }`}
               >
                 <Icon aria-hidden className="size-4 shrink-0" />
                 <span className="flex items-center gap-1.5">
-                  <span className="truncate">{RENT_CATEGORY_LABELS[value]}</span>
+                  <span className="truncate">{name}</span>
                   <span className={`rounded-full px-1.5 text-[0.65rem] sm:text-xs ${selected ? "bg-white/20" : "bg-glass/5"}`}>
                     {count}
                   </span>
                 </span>
-              </button>
+              </Link>
             );
           })}
-        </div>
+        </nav>
       )}
 
       {/* Search + filters */}
@@ -346,7 +303,7 @@ export function RentCatalog() {
       ) : visible.length === 0 ? (
         <p className="neon-card p-8 text-center text-muted">
           {inCategory.length === 0
-            ? `No ${RENT_CATEGORY_LABELS[activeCategory]} available yet. Please check back soon.`
+            ? `No ${category.name} available yet. Please check back soon.`
             : "No services match your search."}
         </p>
       ) : view === "list" ? (

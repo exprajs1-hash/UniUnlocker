@@ -174,6 +174,8 @@ export interface RentCustomFieldDTO {
   options: string[];
   required: boolean;
   imei?: boolean;
+  /** A secret the customer types (e.g. a remote-access password): hidden once the order is finished. */
+  sensitive?: boolean;
 }
 
 /** What visitors see: the selling price only, never the provider cost. */
@@ -186,9 +188,45 @@ export const RENT_CATEGORY_LABELS: Record<RentCategory, string> = {
   server: "Server Service",
 };
 
+/** Icons an admin can pick for a service category (lucide icons, mapped in components/rent/categories.ts). */
+export const CATEGORY_ICON_NAMES = [
+  "key",
+  "smartphone",
+  "server",
+  "globe",
+  "monitor",
+  "wifi",
+  "cpu",
+  "unlock",
+  "shield",
+  "wrench",
+  "zap",
+  "cloud",
+] as const;
+export type CategoryIconName = (typeof CATEGORY_ICON_NAMES)[number];
+
+/**
+ * A website service category. The three built-in ones (RENT_CATEGORIES) are
+ * fixed because provider services are sorted into them automatically; the admin
+ * can add more (e.g. "Remote Service") and put services in them by hand.
+ */
+export interface ServiceCategoryDTO {
+  /** Database id; "" for a built-in category. */
+  id: string;
+  /** URL part: /services/<slug>. */
+  slug: string;
+  name: string;
+  description: string;
+  icon: CategoryIconName;
+  builtIn: boolean;
+  enabled: boolean;
+  displayOrder: number;
+}
+
 export interface PublicRentServiceDTO {
   id: string;
-  category: RentCategory;
+  /** Category slug: one of RENT_CATEGORIES or an admin-made category. */
+  category: string;
   /** The provider's service number, shown as "ID #1234". */
   code: number;
   icon: string;
@@ -237,7 +275,12 @@ export interface RentLastOrderDTO {
 export interface AdminRentServiceDTO {
   lastOrder: RentLastOrderDTO | null;
   id: string;
+  /** "" for a custom (manual) service. */
   provider: string;
+  /** A service the admin made and delivers by hand; no provider involved. */
+  manual: boolean;
+  minQuantity: number;
+  maxQuantity: number;
   providerName: string;
   serviceId: number;
   name: string;
@@ -257,9 +300,9 @@ export interface AdminRentServiceDTO {
   description: string;
   icon: string;
   /** The admin's pick; "" means automatic. */
-  category: RentCategory | "";
+  category: string;
   /** Where it shows on the website now (the pick, or the detected category). */
-  effectiveCategory: RentCategory;
+  effectiveCategory: string;
   customFields: RentCustomFieldDTO[];
   enabled: boolean;
   featured: boolean;
@@ -340,6 +383,8 @@ export interface RentOrderStatsDTO {
 
 export interface AdminRentOrderDTO extends RentOrderDTO {
   serviceId: number;
+  /** Placed on a custom service: the admin delivers it by hand. */
+  manual: boolean;
   providerName: string;
   costUsd: number;
   costCurrency: "USD" | "BDT";

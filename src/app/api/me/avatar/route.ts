@@ -44,10 +44,3 @@ export const POST = route(async (request) => {
   await Customer.updateOne({ _id: customer.id }, { $set: { avatar: url } });
   return json({ avatar: url }, 201);
 });
-
-/** Removes the profile picture; the initial letter shows again. */
-export const DELETE = route(async (request) => {
-  const customer = await requireCustomer(request);
-  await Customer.updateOne({ _id: customer.id }, { $set: { avatar: "" } });
-  return json({ avatar: "" });
-});

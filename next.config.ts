@@ -35,8 +35,16 @@ const nextConfig: NextConfig = {
     return [
       { source: "/admin", destination: "/admin/dashboard", permanent: false },
       // The catalog moved from /rent to /services; keep old links and search results working.
-      { source: "/rent", destination: "/services", permanent: true },
+      { source: "/rent", destination: "/services/rent", permanent: true },
       { source: "/rent/:id", destination: "/services/:id", permanent: true },
+      // Each service type has its own page now; the old ?tab= links land on the right one.
+      {
+        source: "/services",
+        has: [{ type: "query", key: "tab", value: "(?<tab>rent|imei|server)" }],
+        destination: "/services/:tab",
+        permanent: false,
+      },
+      { source: "/services", destination: "/services/rent", permanent: false },
     ];
   },
 };

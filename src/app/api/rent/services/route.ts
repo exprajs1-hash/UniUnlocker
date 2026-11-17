@@ -11,7 +11,7 @@ import { RentService } from "@/models/RentService";
 export const GET = route(async () => {
   const [pricing, providers, customer] = await Promise.all([getPricing(), enabledProviderIds(), getCurrentCustomer()]);
   const adjust = customer?.priceAdjustPercent ?? 0;
-  const services = await RentService.find({ enabled: true, availableOnProvider: true, provider: { $in: providers } })
+  const services = await RentService.find({ enabled: true, availableOnProvider: true, $or: [{ provider: { $in: providers } }, { manual: true }] })
     .sort({ displayOrder: 1, group: 1, name: 1 })
     .lean();
   return json({
