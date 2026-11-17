@@ -202,6 +202,8 @@ export interface PublicRentServiceDTO {
   customFields: RentCustomFieldDTO[];
   minQuantity: number;
   maxQuantity: number;
+  /** When the service was first added (ISO date); "" when unknown. */
+  addedAt: string;
 }
 
 export interface ProviderDTO {

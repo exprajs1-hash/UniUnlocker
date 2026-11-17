@@ -90,7 +90,7 @@ export function customerPrice(service: PricedService, pricing: Pricing, adjustPe
   return Math.max(adjusted, Math.ceil(unitCostBdt(service, pricing)));
 }
 
-type ServiceDoc = IRentService & { _id: unknown };
+type ServiceDoc = IRentService & { _id: unknown; createdAt?: Date };
 
 export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent = 0): PublicRentServiceDTO {
   const regular = effectivePrice(doc, pricing);
@@ -110,6 +110,7 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent
     customFields: doc.customFields ?? [],
     minQuantity: doc.minQuantity ?? 1,
     maxQuantity: doc.maxQuantity ?? 1,
+    addedAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
   };
 }
 

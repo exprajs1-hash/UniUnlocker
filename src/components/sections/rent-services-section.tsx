@@ -1,27 +1,20 @@
 "use client";
 
-import { ArrowRight, Clock, KeyRound, Server, Smartphone } from "lucide-react";
+import { Clock, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ViewAllLink } from "@/components/listing/view-all-link";
 import { PriceTag, ToolIcon } from "@/components/rent/shared";
-import { SectionHeading } from "@/components/sections/section-heading";
 import { apiFetch } from "@/lib/client-api";
-import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type PublicRentServiceDTO, type RentCategory } from "@/types";
+import type { PublicRentServiceDTO } from "@/types";
 
-/** How many services each category shows on the homepage before "View All". */
-const PER_CATEGORY = 4;
-
-const ICONS: Record<RentCategory, typeof KeyRound> = {
-  rent: KeyRound,
-  imei: Smartphone,
-  server: Server,
-};
+/** How many of the newest services the homepage shows. */
+const RECENT_COUNT = 16;
 
 /**
- * Homepage preview of the three service types, a few each, linking to the full
- * catalog tab. Loaded in the browser like the catalog, so a signed-in customer
- * sees their own price here too.
+ * Homepage "Recent Added": the newest services of every type (rent, IMEI,
+ * server) mixed in one grid. Loaded in the browser like the catalog, so a
+ * signed-in customer sees their own price here too.
  */
 export function RentServicesSection() {
   const [services, setServices] = useState<PublicRentServiceDTO[] | null>(null);
@@ -40,76 +33,59 @@ export function RentServicesSection() {
   // Nothing to show: the rest of the homepage carries on without an empty block.
   if (failed || (services !== null && services.length === 0)) return null;
 
-  const categories = RENT_CATEGORIES.map((category) => ({
-    category,
-    items: (services ?? []).filter((service) => service.category === category),
-  })).filter(({ items }) => services === null || items.length > 0);
+  // ISO dates sort correctly as strings; newest first.
+  const recent = services
+    ? [...services].sort((a, b) => b.addedAt.localeCompare(a.addedAt)).slice(0, RECENT_COUNT)
+    : null;
 
   return (
     <section id="services" className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
-      <SectionHeading lead="Our" highlight="Services" subtitle="Tool rent, IMEI and server services, paid from your balance." />
+      <div className="neon-card overflow-hidden p-0">
+        <div className="flex items-center justify-between gap-3 bg-linear-to-r from-primary to-purple px-5 py-3.5 text-white">
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold tracking-wide uppercase">
+            <Clock aria-hidden className="size-5" /> Recent Added
+          </h2>
+          <span className="rounded-md border border-white/40 bg-white/15 px-2.5 py-1 text-xs font-bold tracking-wider uppercase">
+            Latest
+          </span>
+        </div>
 
-      <div className={`mt-10 grid gap-5 ${categories.length >= 3 ? "lg:grid-cols-3" : categories.length === 2 ? "md:grid-cols-2" : ""}`}>
-        {categories.map(({ category, items }) => {
-          const Icon = ICONS[category];
-          return (
-            <div key={category} className="neon-card flex flex-col p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="flex min-w-0 items-center gap-2 font-display text-lg font-bold">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary to-purple text-white">
-                    <Icon aria-hidden className="size-4" />
-                  </span>
-                  <span className="truncate">{RENT_CATEGORY_LABELS[category]}</span>
-                  {services !== null && (
-                    <span className="rounded-full bg-glass/5 px-2 text-xs font-semibold text-muted">{items.length}</span>
-                  )}
-                </h3>
-                <ViewAllLink href={`/services?tab=${category}`} size="small" />
-              </div>
-
-              {services === null ? (
-                <ul aria-label="Loading" className="mt-4 space-y-2">
-                  {Array.from({ length: PER_CATEGORY }, (_, index) => (
-                    <li key={index} className="skeleton h-14" />
-                  ))}
-                </ul>
-              ) : (
-                <ul className="mt-4 flex-1 divide-y divide-line/25">
-                  {items.slice(0, PER_CATEGORY).map((service) => (
-                    <li key={service.id}>
-                      <Link
-                        href={`/services/${service.id}`}
-                        className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition hover:bg-primary/5"
-                      >
-                        <ToolIcon src={service.icon} name={service.name} size={36} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">{service.name}</p>
-                          {service.deliveryTime && (
-                            <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted">
-                              <Clock aria-hidden className="size-3" /> {service.deliveryTime}
-                            </p>
-                          )}
-                        </div>
-                        <span className="shrink-0 text-sm font-bold whitespace-nowrap text-neon">
+        <ul className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {recent === null
+            ? Array.from({ length: RECENT_COUNT }, (_, index) => (
+                <li key={index} aria-hidden className="skeleton h-20" />
+              ))
+            : recent.map((service) => (
+                <li key={service.id}>
+                  <Link
+                    href={`/services/${service.id}`}
+                    className="flex h-full items-center gap-3 rounded-xl border border-line/30 bg-glass/5 p-4 transition hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/5"
+                  >
+                    <ToolIcon src={service.icon} name={service.name} size={44} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold uppercase" title={service.name}>
+                        {service.name}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2 text-xs">
+                        <span className="text-base font-bold whitespace-nowrap text-neon">
                           <PriceTag price={service.priceBdt} regular={service.regularPriceBdt} />
                         </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                        {service.deliveryTime && (
+                          <span className="inline-flex min-w-0 items-center gap-1 border-l border-line/40 pl-2 font-semibold text-muted uppercase">
+                            <Zap aria-hidden className="size-3 shrink-0 text-amber-400" />
+                            <span className="truncate">{service.deliveryTime}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+        </ul>
 
-              {services !== null && items.length > PER_CATEGORY && (
-                <Link
-                  href={`/services?tab=${category}`}
-                  className="mt-3 inline-flex items-center gap-1 self-center text-xs font-semibold text-cyan hover:underline"
-                >
-                  +{items.length - PER_CATEGORY} more <ArrowRight aria-hidden className="size-3" />
-                </Link>
-              )}
-            </div>
-          );
-        })}
+        <div className="flex justify-center pb-5">
+          <ViewAllLink href="/services" size="small" />
+        </div>
       </div>
     </section>
   );
