@@ -84,6 +84,10 @@
 }
 
 @theme inline {
+  /* Sora and Plus Jakarta Sans look heavier than Poppins at the same number, so every
+     weight class is one step lighter: bold reads as semibold, extrabold as bold. */
+  --font-weight-extrabold: 700;
+  --font-weight-bold: 600;
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
@@ -144,16 +148,16 @@ body {
 @layer base {
   h1 {
     font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 800;
+    font-weight: 700;
   }
   h2,
   h3,
   h4 {
     font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 700;
+    font-weight: 600;
   }
   p {
-    font-weight: 500;
+    font-weight: 400;
   }
 }
 

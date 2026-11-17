@@ -177,11 +177,32 @@ function UtilityMenu({ links }: { links: UtilityLink[] }) {
 }
 
 /** "Services" in the main nav: a dropdown with one page per service type. */
-function ServicesMenu({ buttonClass, categories }: { buttonClass: string; categories: ServiceCategoryDTO[] }) {
+function ServicesMenu({
+  buttonClass,
+  categories,
+  inNav = false,
+}: {
+  buttonClass: string;
+  categories: ServiceCategoryDTO[];
+  /** A plain nav link (laptop widths) instead of the pill button next to Add-On. */
+  inNav?: boolean;
+}) {
   return (
-    <HoverMenu label="Services" icon={<ChevronDown aria-hidden className="size-4" />} buttonClass={buttonClass} align="left" plain>
+    <HoverMenu
+      label="Services"
+      icon={
+        <>
+          {!inNav && <LayoutGrid aria-hidden className="size-4" />}
+          <ChevronDown aria-hidden className="size-4" />
+        </>
+      }
+      buttonClass={buttonClass}
+      align={inNav ? "left" : "right"}
+      plain={inNav}
+    >
       {(close) => (
-        <ul className="max-h-[70vh] w-60 overflow-y-auto">
+        // Same height as the Add-On list: it scrolls once there are many categories.
+        <ul className="max-h-80 w-60 overflow-y-auto">
           {categories.map(({ slug, name, icon }) => {
             const Icon = categoryIcon(icon);
             return (
@@ -265,12 +286,24 @@ function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer |
       href="/account"
       onClick={onClick}
       title={`${customer.name}: my account`}
-      className="flex max-w-48 items-center gap-2 rounded-full border border-line/60 py-1 pr-4 pl-1 transition hover:border-cyan"
+      className="group flex max-w-48 items-center gap-2 rounded-full border border-line/60 py-1 pr-4 pl-1 transition hover:border-cyan"
     >
       <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
       <span className="min-w-0 leading-tight">
         <span className="block truncate text-sm font-semibold">{customer.name}</span>
-        <span className="block text-xs font-bold text-cyan tabular-nums">{formatTaka(customer.balance)}</span>
+        {/* The balance stays private (e.g. on a shared screen) until the pill is hovered or focused. */}
+        <span className="grid text-xs font-bold text-cyan tabular-nums">
+          <span
+            aria-hidden
+            className="col-start-1 row-start-1 transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0"
+          >
+            ৳ ••••
+          </span>
+          <span className="col-start-1 row-start-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <span className="sr-only">Balance </span>
+            {formatTaka(customer.balance)}
+          </span>
+        </span>
       </span>
     </Link>
   );
@@ -333,8 +366,10 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
               </Link>
             </li>
           ))}
-          <li>
+          {/* Laptop widths only: from xl the Services button sits next to Add-On instead. */}
+          <li className="xl:hidden">
             <ServicesMenu
+              inNav
               categories={actions.categories}
               buttonClass={`inline-flex items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
                 onServices
@@ -350,6 +385,12 @@ export function Navbar({ brand, actions }: { brand: ReactNode; actions: HeaderAc
             {chats.length > 0 && <HireMeMenu options={chats} />}
             {actions.utilityLinks.length > 0 && <UtilityMenu links={actions.utilityLinks} />}
           </div>
+          {/* Only on wide screens: below xl it would crowd the header, so it is a nav link there. */}
+          {actions.categories.length > 0 && (
+            <div className="hidden xl:block">
+              <ServicesMenu categories={actions.categories} buttonClass={`btn-outline ${onServices ? "border-cyan! text-cyan" : ""}`} />
+            </div>
+          )}
           <ThemeToggle className="flex size-10 items-center justify-center rounded-full border border-line/60 transition hover:border-cyan hover:text-cyan" />
           <div className="hidden sm:block">
             <AccountLink customer={customer} />

@@ -41,25 +41,38 @@ function DeliveryBadge({ text }: { text: string }) {
 const HERO_WORD: Record<string, string> = { rent: "Tools Rent", imei: "IMEI", server: "Server" };
 const DEFAULT_SUBTITLE = "Fast, reliable services paid straight from your balance.";
 
-const TYPE_MS = 150;
+const TYPE_MS = 75;
+
+type TypedPart = { text: string; className?: string };
+
+const Caret = () => (
+  <span
+    aria-hidden
+    className="ml-0.5 inline-block h-[0.9em] w-0.75 translate-y-[0.1em] rounded-full bg-cyan motion-safe:animate-[caret-blink_1s_step-end_infinite]"
+  />
+);
 
 /**
- * Types `text` out letter by letter with a blinking cursor, restarting when it
- * changes. Screen readers get the full text at once; reduced-motion shows it whole.
+ * Types the whole line out letter by letter with a blinking cursor, restarting
+ * when it changes. Each part keeps its own style (e.g. the gradient word). The
+ * untyped rest stays in place but invisible, so the heading never jumps or
+ * re-wraps while typing. Screen readers get the full text at once; reduced
+ * motion shows it whole.
  */
-function Typewriter({ text, className = "" }: { text: string; className?: string }) {
-  const [shown, setShown] = useState(text.length);
+function Typewriter({ parts }: { parts: TypedPart[] }) {
+  const full = parts.map((part) => part.text).join("");
+  const [shown, setShown] = useState(full.length);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- show the whole word without animating
-      setShown(text.length);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- show the whole line without animating
+      setShown(full.length);
       return;
     }
     setShown(0);
     const timer = setInterval(() => {
       setShown((count) => {
-        if (count >= text.length) {
+        if (count >= full.length) {
           clearInterval(timer);
           return count;
         }
@@ -67,19 +80,30 @@ function Typewriter({ text, className = "" }: { text: string; className?: string
       });
     }, TYPE_MS);
     return () => clearInterval(timer);
-  }, [text]);
+  }, [full]);
 
+  // Where each part starts in the full line.
+  const starts = parts.map((_, index) => parts.slice(0, index).reduce((sum, part) => sum + part.text.length, 0));
   return (
-    <span className="whitespace-nowrap">
-      <span className="sr-only">{text}</span>
-      <span aria-hidden className={className}>
-        {text.slice(0, shown)}
+    <>
+      <span className="sr-only">{full}</span>
+      <span aria-hidden>
+        {parts.map((part, index) => {
+          const from = starts[index];
+          const start = from + part.text.length;
+          const typed = Math.max(0, Math.min(part.text.length, shown - from));
+          // The caret sits where typing currently is, or after the last part once done.
+          const caretHere = (shown >= from && shown < start) || (index === parts.length - 1 && shown >= start);
+          return (
+            <span key={index}>
+              <span className={part.className}>{part.text.slice(0, typed)}</span>
+              {caretHere && <Caret />}
+              <span className="invisible">{part.text.slice(typed)}</span>
+            </span>
+          );
+        })}
       </span>
-      <span
-        aria-hidden
-        className="ml-0.5 inline-block h-[0.9em] w-0.75 translate-y-[0.1em] rounded-full bg-cyan motion-safe:animate-[caret-blink_1s_step-end_infinite]"
-      />
-    </span>
+    </>
   );
 }
 
@@ -104,7 +128,7 @@ function ServicesHero({ category, count }: { category: ServiceCategoryDTO; count
           {count === null ? "Premium services" : `${count}${count >= 10 ? "+" : ""} Premium Services Available`}
         </span>
         <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold sm:text-5xl lg:text-[56px] lg:leading-14">
-          Premium <Typewriter text={highlight} className="text-gradient-flow" /> Services
+          <Typewriter parts={[{ text: "Premium " }, { text: highlight, className: "text-gradient-flow" }, { text: " Services" }]} />
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-muted motion-safe:animate-[hero-in_0.6s_ease-out_0.25s_both] sm:text-base">
           {subtitle}
