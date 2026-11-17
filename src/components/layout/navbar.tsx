@@ -286,23 +286,14 @@ function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer |
       href="/account"
       onClick={onClick}
       title={`${customer.name}: my account`}
-      className="group flex max-w-48 items-center gap-2 rounded-full border border-line/60 py-1 pr-4 pl-1 transition hover:border-cyan"
+      className="flex max-w-44 items-center gap-2 rounded-full border border-line/60 py-1 pr-3.5 pl-1 transition hover:border-cyan"
     >
-      <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
+      <CustomerAvatar src={customer.avatar} name={customer.name} size={30} />
       <span className="min-w-0 leading-tight">
-        <span className="block truncate text-sm font-semibold">{customer.name}</span>
-        {/* The balance stays private (e.g. on a shared screen) until the pill is hovered or focused. */}
-        <span className="grid text-xs font-bold text-cyan tabular-nums">
-          <span
-            aria-hidden
-            className="col-start-1 row-start-1 transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0"
-          >
-            ৳ ••••
-          </span>
-          <span className="col-start-1 row-start-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-            <span className="sr-only">Balance </span>
-            {formatTaka(customer.balance)}
-          </span>
+        <span className="block truncate text-xs font-medium">{customer.name}</span>
+        <span className="block text-xs font-semibold text-cyan tabular-nums">
+          <span className="sr-only">Balance </span>
+          {formatTaka(customer.balance)}
         </span>
       </span>
     </Link>
