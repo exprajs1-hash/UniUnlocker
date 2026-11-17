@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { ApiError, assertSameOrigin } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Customer } from "@/models/Customer";
+import type { CustomerTag } from "@/types";
 
 /**
  * Customer sessions. A different cookie and JWT issuer from the admin session,
@@ -25,6 +26,8 @@ export interface CurrentCustomer {
   email: string;
   phone: string;
   balance: number;
+  tag: CustomerTag;
+  avatar: string;
   /** Personal rate set by the admin. Server-side only: never send it to the browser. */
   priceAdjustPercent: number;
 }
@@ -75,6 +78,8 @@ export async function getCurrentCustomer(): Promise<CurrentCustomer | null> {
     email: customer.email,
     phone: customer.phone,
     balance: customer.balance,
+    tag: customer.tag ?? "customer",
+    avatar: customer.avatar ?? "",
     priceAdjustPercent: customer.priceAdjustPercent ?? 0,
   };
 }

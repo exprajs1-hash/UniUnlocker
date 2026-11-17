@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Search } from "lucide-react";
+import { Flame, Pencil, Search, Star } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, SelectField, TextAreaField, TextField, Toggle } from "@/components/admin/form";
@@ -16,7 +16,38 @@ import { detectCategory } from "@/lib/rent-category";
 import { RENT_CATEGORIES, RENT_CATEGORY_LABELS, type AdminRentServiceDTO, type RentCategory, type RentConfigDTO } from "@/types";
 
 type Data = { services: AdminRentServiceDTO[]; config: RentConfigDTO; rate: number };
-type Show = "enabled" | "rent" | "imei" | "server" | "all" | "problems";
+type Show = "enabled" | "rent" | "imei" | "server" | "featured" | "hot" | "all" | "problems";
+type Flags = Partial<Pick<AdminRentServiceDTO, "enabled" | "featured" | "hot">>;
+
+/** A small on/off pill for the homepage Featured / Hot picks. */
+function PickButton({
+  active,
+  label,
+  icon: Icon,
+  activeClass,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  icon: typeof Star;
+  activeClass: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      title={active ? `Remove from ${label}` : `Add to ${label}`}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold transition ${
+        active ? activeClass : "border-admin-line text-admin-muted hover:text-admin-text"
+      }`}
+    >
+      <Icon aria-hidden className={`size-3.5 ${active ? "fill-current" : ""}`} />
+      {label}
+    </button>
+  );
+}
 
 const failedLastOrder = (service: AdminRentServiceDTO) =>
   service.lastOrder !== null && ["rejected", "failed"].includes(service.lastOrder.status);
@@ -211,6 +242,8 @@ export function RentServicesManager() {
       if (show === "enabled" && !service.enabled) return false;
       if (show === "rent" && !service.enabled && !isRent(service)) return false;
       if ((show === "imei" || show === "server") && service.effectiveCategory !== show) return false;
+      if (show === "featured" && !service.featured) return false;
+      if (show === "hot" && !service.hot) return false;
       if (show === "problems" && !failedLastOrder(service) && service.availableOnProvider) return false;
       if (!needle) return true;
       return `${service.name} ${service.title} ${service.group} ${service.serviceId} ${service.providerName}`.toLowerCase().includes(needle);
@@ -232,12 +265,12 @@ export function RentServicesManager() {
         },
     );
 
-  async function toggle(service: AdminRentServiceDTO, enabled: boolean) {
-    replace({ ...service, enabled });
+  async function toggle(service: AdminRentServiceDTO, flags: Flags) {
+    replace({ ...service, ...flags });
     try {
       const result = await apiFetch<{ service: AdminRentServiceDTO }>(`/api/rent-services/${service.id}`, {
         method: "PATCH",
-        body: { enabled },
+        body: flags,
       });
       replace(result.service);
     } catch (toggleError) {
@@ -247,6 +280,8 @@ export function RentServicesManager() {
   }
 
   const enabledCount = services?.filter((service) => service.enabled).length ?? 0;
+  const featuredCount = services?.filter((service) => service.featured).length ?? 0;
+  const hotCount = services?.filter((service) => service.hot).length ?? 0;
   const categoryCounts = { rent: 0, imei: 0, server: 0 };
   for (const service of services ?? []) categoryCounts[service.effectiveCategory] += 1;
   const problemCount = services?.filter((service) => failedLastOrder(service) || !service.availableOnProvider).length ?? 0;
@@ -325,6 +360,8 @@ export function RentServicesManager() {
                     <option value="imei">IMEI services ({categoryCounts.imei})</option>
                     <option value="server">Server services ({categoryCounts.server})</option>
                     <option value="enabled">Shown on website ({enabledCount})</option>
+                    <option value="featured">Featured products ({featuredCount})</option>
+                    <option value="hot">Hot products ({hotCount})</option>
                     <option value="all">All services ({data.services.length})</option>
                     <option value="problems">Problem services ({problemCount})</option>
                   </select>
@@ -369,6 +406,25 @@ export function RentServicesManager() {
                         <p className="mt-1 text-xs">
                           <LastOrderBadge service={service} />
                         </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <PickButton
+                            label="Featured"
+                            icon={Star}
+                            active={service.featured}
+                            activeClass="border-amber-400/60 bg-amber-400/15 text-amber-500"
+                            onClick={() => void toggle(service, { featured: !service.featured })}
+                          />
+                          <PickButton
+                            label="Hot"
+                            icon={Flame}
+                            active={service.hot}
+                            activeClass="border-rose-500/60 bg-rose-500/15 text-rose-500"
+                            onClick={() => void toggle(service, { hot: !service.hot })}
+                          />
+                          {(service.featured || service.hot) && !service.enabled && (
+                            <span className="text-xs text-status-maintenance">Turn the service on to show it on the homepage</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right text-sm">
@@ -382,7 +438,7 @@ export function RentServicesManager() {
                           hideLabel
                           checked={service.enabled}
                           disabled={!service.availableOnProvider && !service.enabled}
-                          onChange={(value) => void toggle(service, value)}
+                          onChange={(value) => void toggle(service, { enabled: value })}
                         />
                         <button type="button" aria-label={`Edit ${service.name}`} onClick={() => setEditing(service)} className="admin-icon-btn">
                           <Pencil aria-hidden className="size-4" />

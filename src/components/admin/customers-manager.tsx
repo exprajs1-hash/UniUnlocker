@@ -4,6 +4,8 @@ import { Search, Wallet } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, SelectField, TextField, Toggle } from "@/components/admin/form";
 import {
+  CustomerAvatar,
+  CustomerTagBadge,
   formatBdt,
   formatSignedBdt,
   OrderResult,
@@ -15,7 +17,14 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
-import type { BalanceTransactionDTO, CustomerDTO, RentOrderDTO } from "@/types";
+import {
+  CUSTOMER_TAG_LABELS,
+  CUSTOMER_TAGS,
+  type BalanceTransactionDTO,
+  type CustomerDTO,
+  type CustomerTag,
+  type RentOrderDTO,
+} from "@/types";
 
 type ListData = { customers: CustomerDTO[]; total: number; page: number; pageSize: number };
 type Detail = { customer: CustomerDTO; transactions: BalanceTransactionDTO[]; orders: RentOrderDTO[] };
@@ -161,6 +170,59 @@ function PriceRateForm({ customer, onDone }: { customer: CustomerDTO; onDone: (c
   );
 }
 
+/** Picks the badge shown on the customer's account. Saves as soon as it changes. */
+function TagForm({ customer, onDone }: { customer: CustomerDTO; onDone: (customer: CustomerDTO) => void }) {
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const current = customer.tag ?? "customer";
+
+  async function save(tag: CustomerTag) {
+    if (tag === current) return;
+    setBusy(true);
+    try {
+      const result = await apiFetch<{ customer: CustomerDTO }>(`/api/customers/${customer.id}`, {
+        method: "PATCH",
+        body: { tag },
+      });
+      toast.success(`Tag set to ${CUSTOMER_TAG_LABELS[tag]}.`);
+      onDone(result.customer);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-admin-line p-4">
+      <h3 className="flex flex-wrap items-center gap-2 font-medium">
+        Customer tag <CustomerTagBadge tag={current} />
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {CUSTOMER_TAGS.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            disabled={busy}
+            aria-pressed={tag === current}
+            onClick={() => void save(tag)}
+            className={`rounded-full border px-3 py-1 text-sm transition disabled:opacity-60 ${
+              tag === current
+                ? "border-primary bg-primary/15 font-semibold text-primary"
+                : "border-admin-line text-admin-muted hover:text-admin-text"
+            }`}
+          >
+            {CUSTOMER_TAG_LABELS[tag]}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-admin-muted">
+        Shown on the customer&apos;s account page. A badge only: it gives no admin access and does not change prices.
+      </p>
+    </div>
+  );
+}
+
 function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: CustomerDTO) => void }) {
   const { data, error, loading, reload, setData } = useResource<Detail>(`/api/customers/${id}`);
   const [tab, setTab] = useState<"wallet" | "orders">("wallet");
@@ -184,13 +246,24 @@ function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: C
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="text-sm">
-          <p className="text-admin-muted">{customer.email}</p>
-          <p className="text-admin-muted">{customer.phone || "No phone"}</p>
-          <p className="mt-1 text-2xl font-semibold">{formatBdt(customer.balance)}</p>
+        <div className="flex items-start gap-3 text-sm">
+          <CustomerAvatar src={customer.avatar} name={customer.name} size={56} />
+          <div>
+            <p className="text-admin-muted">{customer.email}</p>
+            <p className="text-admin-muted">{customer.phone || "No phone"}</p>
+            <p className="mt-1 text-2xl font-semibold">{formatBdt(customer.balance)}</p>
+          </div>
         </div>
         <Toggle label={customer.active ? "Active" : "Blocked"} checked={customer.active} onChange={(value) => void setActive(value)} />
       </div>
+
+      <TagForm
+        customer={customer}
+        onDone={(updated) => {
+          setData((current) => current && { ...current, customer: updated });
+          onChanged(updated);
+        }}
+      />
 
       <BalanceForm
         customer={customer}
@@ -328,9 +401,11 @@ export function CustomersManager() {
                     customer.active ? "" : "opacity-60"
                   }`}
                 >
+                  <CustomerAvatar src={customer.avatar} name={customer.name} size={40} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       {customer.name}
+                      {customer.tag && customer.tag !== "customer" && <CustomerTagBadge tag={customer.tag} className="ml-2 align-middle" />}
                       {!customer.active && <span className="ml-2 text-xs text-status-offline">Blocked</span>}
                       {(customer.priceAdjustPercent ?? 0) !== 0 && (
                         <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">

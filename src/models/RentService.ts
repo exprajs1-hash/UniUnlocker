@@ -40,6 +40,10 @@ export interface IRentService {
   minQuantity: number;
   maxQuantity: number;
   enabled: boolean;
+  /** Admin pick: shown in the homepage "Featured Products" section. */
+  featured: boolean;
+  /** Admin pick: an offer, shown in the homepage "Hot Products" section. */
+  hot: boolean;
   /** False when the last sync no longer listed this service. */
   availableOnProvider: boolean;
   displayOrder: number;
@@ -76,6 +80,8 @@ const RentServiceSchema = new Schema<IRentService>(
     minQuantity: { type: Number, default: 1 },
     maxQuantity: { type: Number, default: 1 },
     enabled: { type: Boolean, default: false },
+    featured: { type: Boolean, default: false },
+    hot: { type: Boolean, default: false },
     availableOnProvider: { type: Boolean, default: true },
     displayOrder: { type: Number, default: 0 },
     syncedAt: { type: Date, default: Date.now },

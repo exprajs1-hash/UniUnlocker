@@ -204,6 +204,9 @@ export interface PublicRentServiceDTO {
   maxQuantity: number;
   /** When the service was first added (ISO date); "" when unknown. */
   addedAt: string;
+  /** Admin picks for the homepage Featured / Hot sections. */
+  featured: boolean;
+  hot: boolean;
 }
 
 export interface ProviderDTO {
@@ -259,6 +262,8 @@ export interface AdminRentServiceDTO {
   effectiveCategory: RentCategory;
   customFields: RentCustomFieldDTO[];
   enabled: boolean;
+  featured: boolean;
+  hot: boolean;
   availableOnProvider: boolean;
   displayOrder: number;
   syncedAt: string;
@@ -269,11 +274,29 @@ export interface RentConfigDTO {
   ordersEnabled: boolean;
 }
 
+/**
+ * Display badge the admin gives a customer. Cosmetic only: no tag, not even
+ * "VIP Admin", grants any admin access or changes prices.
+ */
+export const CUSTOMER_TAGS = ["customer", "reseller", "vip_admin", "web_owner", "founder_ceo"] as const;
+export type CustomerTag = (typeof CUSTOMER_TAGS)[number];
+export const CUSTOMER_TAG_LABELS: Record<CustomerTag, string> = {
+  customer: "Customer",
+  reseller: "Reseller",
+  vip_admin: "VIP Admin",
+  web_owner: "Web Owner",
+  founder_ceo: "Founder CEO",
+};
+
 export interface CustomerDTO {
   id: string;
   name: string;
   email: string;
   phone: string;
+  /** Missing on customers saved before tags existed (= "customer"). */
+  tag?: CustomerTag;
+  /** Profile picture URL uploaded by the customer; "" or missing = initial letter. */
+  avatar?: string;
   balance: number;
   /** Personal rate vs the public price; missing on customers saved before it existed (= 0). */
   priceAdjustPercent?: number;

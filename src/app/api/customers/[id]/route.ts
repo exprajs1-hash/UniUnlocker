@@ -27,14 +27,15 @@ export const GET = adminRoute<IdContext>(async (_request, { params }) => {
   });
 });
 
-/** Block/unblock and set the personal price rate. Blocking also signs the customer out everywhere. */
+/** Block/unblock, set the personal price rate or the display tag. Blocking also signs the customer out everywhere. */
 export const PATCH = adminRoute<IdContext>(async (request, { params }) => {
   const id = parseObjectId((await params).id);
-  const { active, priceAdjustPercent } = customerPatchSchema.parse(await readJson(request));
+  const { active, priceAdjustPercent, tag } = customerPatchSchema.parse(await readJson(request));
   await connectToDatabase();
   const set = {
     ...(active !== undefined ? { active } : {}),
     ...(priceAdjustPercent !== undefined ? { priceAdjustPercent } : {}),
+    ...(tag !== undefined ? { tag } : {}),
   };
   const update = active === false ? { $set: set, $inc: { tokenVersion: 1 } } : { $set: set };
   const customer = await Customer.findByIdAndUpdate(id, update, {

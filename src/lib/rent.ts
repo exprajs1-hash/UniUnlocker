@@ -111,6 +111,8 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent
     minQuantity: doc.minQuantity ?? 1,
     maxQuantity: doc.maxQuantity ?? 1,
     addedAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
+    featured: doc.featured ?? false,
+    hot: doc.hot ?? false,
   };
 }
 
@@ -125,6 +127,8 @@ export function toAdminService(
     lastOrder,
     description: doc.description ?? "",
     icon: doc.icon ?? "",
+    featured: doc.featured ?? false,
+    hot: doc.hot ?? false,
     category: (doc.category ?? "") as AdminRentServiceDTO["category"],
     effectiveCategory: effectiveCategory(doc),
     provider: String(doc.provider),

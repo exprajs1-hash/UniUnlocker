@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isUsableImageUrl } from "@/lib/images";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
 import { SERVICE_ICON_NAMES } from "@/lib/service-icons";
-import { PROJECT_STATUSES, SERVER_STATUSES } from "@/types";
+import { CUSTOMER_TAGS, PROJECT_STATUSES, SERVER_STATUSES } from "@/types";
 
 const text = (max: number, label: string) =>
   z.string().trim().min(1, `${label} is required`).max(max, `${label} is too long`);
@@ -310,13 +310,20 @@ export const customerPatchSchema = z
       .min(-90, "At most 90% cheaper")
       .max(500, "This rate is too high")
       .refine((value) => Math.abs(Math.round(value * 100) - value * 100) < 1e-6, "Use at most 2 decimals"),
+    /** Display badge only; grants no access. */
+    tag: z.enum(CUSTOMER_TAGS, { error: "Choose a valid tag" }),
   })
   .partial()
-  .refine((data) => data.active !== undefined || data.priceAdjustPercent !== undefined, "Nothing to update.");
+  .refine(
+    (data) => data.active !== undefined || data.priceAdjustPercent !== undefined || data.tag !== undefined,
+    "Nothing to update.",
+  );
 
 /** Every key is optional with no defaults, so a PATCH only touches what it sends. */
 export const rentServicePatchSchema = z.object({
   enabled: z.boolean().optional(),
+  featured: z.boolean().optional(),
+  hot: z.boolean().optional(),
   title: z.string().trim().max(200, "This value is too long").optional(),
   description: z.string().trim().max(3000, "This description is too long").optional(),
   // No default here: a PATCH that leaves `icon` out (e.g. the enable toggle) must not clear it.

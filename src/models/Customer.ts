@@ -1,4 +1,5 @@
 import { Schema, model, models, type Model } from "mongoose";
+import { CUSTOMER_TAGS, type CustomerTag } from "@/types";
 
 /** A website visitor who registered to rent tools. Separate from Admin. */
 export interface ICustomer {
@@ -13,6 +14,10 @@ export interface ICustomer {
    * 5 is 5% dearer, 0 is the public price. Set by the admin; never shown to the customer.
    */
   priceAdjustPercent: number;
+  /** Display badge set by the admin (Customer, Reseller, VIP Admin…). Cosmetic only, grants no access. */
+  tag: CustomerTag;
+  /** Profile picture URL (Cloudinary) uploaded by the customer; "" = none. */
+  avatar: string;
   /** A blocked customer cannot sign in or order. */
   active: boolean;
   /** Bumped to sign the customer out everywhere. */
@@ -28,6 +33,8 @@ const CustomerSchema = new Schema<ICustomer>(
     passwordHash: { type: String, required: true, select: false },
     balance: { type: Number, default: 0, min: 0 },
     priceAdjustPercent: { type: Number, default: 0, min: -90, max: 500 },
+    tag: { type: String, enum: CUSTOMER_TAGS, default: "customer" },
+    avatar: { type: String, default: "", trim: true },
     active: { type: Boolean, default: true },
     tokenVersion: { type: Number, default: 0 },
   },

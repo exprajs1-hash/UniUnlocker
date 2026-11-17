@@ -1,11 +1,11 @@
 "use client";
 
-import { Check, Copy, Wrench } from "lucide-react";
+import { BadgeCheck, Check, Copy, Crown, Gem, Globe, Store, User, Wrench } from "lucide-react";
 import { useState } from "react";
 import { SafeImage } from "@/components/ui/safe-image";
 import { isUsableImageUrl } from "@/lib/images";
 import { parseResultLines } from "@/lib/provider-text";
-import type { BalanceTransactionType, RentOrderStatus } from "@/types";
+import { CUSTOMER_TAG_LABELS, type BalanceTransactionType, type CustomerTag, type RentOrderStatus } from "@/types";
 
 /** The admin's tool icon, or a wrench on a gradient tile when none is set. */
 export function ToolIcon({ src, name, size = 40 }: { src: string; name: string; size?: number }) {
@@ -145,5 +145,57 @@ export function OrderResult({ text }: { text: string }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/* ---------------------------------------------------------- customer tags */
+
+const TAG_STYLE: Record<CustomerTag, { icon: typeof User; className: string }> = {
+  customer: {
+    icon: User,
+    className: "border-line/60 bg-glass/10 text-muted",
+  },
+  reseller: { icon: Store, className: "border-cyan/50 bg-cyan/15 text-cyan" },
+  vip_admin: {
+    icon: Gem,
+    className: "border-purple/60 bg-purple/20 text-purple",
+  },
+  web_owner: {
+    icon: Globe,
+    className: "border-emerald-500/50 bg-emerald-500/15 text-emerald-500",
+  },
+  founder_ceo: {
+    icon: Crown,
+    className: "border-amber-400/60 bg-amber-400/15 text-amber-500",
+  },
+};
+
+/** The badge the admin gave this customer. Cosmetic only. */
+export function CustomerTagBadge({ tag = "customer", className = "" }: { tag?: CustomerTag; className?: string }) {
+  const { icon: Icon, className: tone } = TAG_STYLE[tag] ?? TAG_STYLE.customer;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap uppercase ${tone} ${className}`}
+    >
+      <Icon aria-hidden className="size-3" />
+      {CUSTOMER_TAG_LABELS[tag] ?? CUSTOMER_TAG_LABELS.customer}
+      {tag !== "customer" && <BadgeCheck aria-hidden className="size-3" />}
+    </span>
+  );
+}
+
+/** Profile picture, or the first letter of the name on a gradient when none is set. */
+export function CustomerAvatar({ src, name, size = 56 }: { src?: string; name: string; size?: number }) {
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-primary to-purple font-display font-bold text-white shadow-lg shadow-primary/30"
+    >
+      {src && isUsableImageUrl(src) ? (
+        <SafeImage src={src} alt={`${name}'s photo`} fill sizes={`${size * 2}px`} className="object-cover" />
+      ) : (
+        <span style={{ fontSize: size * 0.38 }}>{name.trim().charAt(0).toUpperCase() || "?"}</span>
+      )}
+    </span>
   );
 }

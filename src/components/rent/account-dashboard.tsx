@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Ban,
   CalendarDays,
+  Camera,
   CheckCircle2,
   Clock,
   Loader,
@@ -14,16 +15,25 @@ import {
   RefreshCw,
   ShoppingBag,
   ShoppingCart,
+  Trash2,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { formatBdt, formatSignedBdt, OrderResult, OrderStatusBadge, TRANSACTION_LABELS } from "@/components/rent/shared";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import {
+  CustomerAvatar,
+  CustomerTagBadge,
+  formatBdt,
+  formatSignedBdt,
+  OrderResult,
+  OrderStatusBadge,
+  TRANSACTION_LABELS,
+} from "@/components/rent/shared";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, errorMessage } from "@/lib/client-api";
-import type { BalanceTransactionDTO, RentOrderDTO, RentOrderStatsDTO } from "@/types";
+import type { BalanceTransactionDTO, CustomerTag, RentOrderDTO, RentOrderStatsDTO } from "@/types";
 
 const DATE_TIME = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -44,6 +54,96 @@ interface Me {
   email: string;
   phone: string;
   balance: number;
+  tag: CustomerTag;
+  avatar: string;
+}
+
+/* ------------------------------------------------------------ profile photo */
+
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+
+/** The customer's photo with a camera button to change it and a small button to remove it. */
+function ProfilePhoto({ me, onChange }: { me: Me; onChange: (avatar: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  async function upload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // Lets the same file be picked again after an error.
+    if (!file) return;
+    // Checked here for a quick message; the server checks again and has the final say.
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Use a JPG, PNG or WebP photo.");
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error("The photo must be 2 MB or smaller.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const { avatar } = await apiFetch<{ avatar: string }>("/api/me/avatar", {
+        method: "POST",
+        body,
+      });
+      onChange(avatar);
+      toast.success("Profile photo updated.");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    setBusy(true);
+    try {
+      await apiFetch("/api/me/avatar", { method: "DELETE" });
+      onChange("");
+      toast.success("Profile photo removed.");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <CustomerAvatar src={me.avatar} name={me.name} size={64} />
+      {busy && (
+        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+          <Loader aria-hidden className="size-5 animate-spin text-white" />
+        </span>
+      )}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => input.current?.click()}
+        aria-label={me.avatar ? "Change profile photo" : "Upload profile photo"}
+        title={me.avatar ? "Change photo" : "Upload photo"}
+        className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-white shadow transition hover:bg-purple disabled:opacity-60"
+      >
+        <Camera aria-hidden className="size-3.5" />
+      </button>
+      {me.avatar && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void remove()}
+          aria-label="Remove profile photo"
+          title="Remove photo"
+          className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border-2 border-background bg-status-offline text-white shadow transition hover:opacity-90 disabled:opacity-60"
+        >
+          <Trash2 aria-hidden className="size-3" />
+        </button>
+      )}
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void upload(event)} className="hidden" />
+    </div>
+  );
 }
 
 /** While an order is open, the page refreshes itself this often so the customer never has to press Refresh. */
@@ -308,12 +408,11 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
         />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-purple font-display text-xl font-bold text-white shadow-lg shadow-primary/30">
-              {me.name.trim().charAt(0).toUpperCase() || "?"}
-            </span>
+            <ProfilePhoto me={me} onChange={(avatar) => setMe((current) => current && { ...current, avatar })} />
             <div className="min-w-0">
               <p className="text-sm text-muted">Welcome back</p>
               <h1 className="truncate font-display text-xl font-extrabold sm:text-2xl">{me.name}</h1>
+              <CustomerTagBadge tag={me.tag} className="mt-1" />
               <p className="truncate text-sm text-muted">{me.email}</p>
             </div>
           </div>
