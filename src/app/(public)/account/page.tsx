@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AccountDashboard } from "@/components/rent/account-dashboard";
 import { getSettings } from "@/lib/data";
+import { zinipayEnabled } from "@/lib/zinipay";
 import { telegramLink, whatsappLink } from "@/utils/format";
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export default async function AccountPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-12 lg:px-8">
-      <AccountDashboard contactUrl={contactUrl} />
+      <AccountDashboard contactUrl={contactUrl} onlinePayment={zinipayEnabled()} />
     </div>
   );
 }

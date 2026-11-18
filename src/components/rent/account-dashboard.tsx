@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type FormEvent } from "react";
 import {
   CustomerAvatar,
   CustomerTagBadge,
@@ -30,7 +30,7 @@ import {
 } from "@/components/rent/shared";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
-import { apiFetch, errorMessage } from "@/lib/client-api";
+import { apiFetch, errorMessage, fieldErrorsOf } from "@/lib/client-api";
 import type { BalanceTransactionDTO, CustomerTag, RentOrderDTO, RentOrderStatsDTO } from "@/types";
 
 const DATE_TIME = new Intl.DateTimeFormat("en-GB", {
@@ -277,7 +277,80 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
 
 /* --------------------------------------------------------------- dashboard */
 
-export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) {
+const DEPOSIT_MESSAGES: Record<string, { kind: "success" | "error"; text: string }> = {
+  success: { kind: "success", text: "Payment received. Your balance has been added." },
+  pending: { kind: "success", text: "Your payment is being confirmed. The balance will be added as soon as it is." },
+  failed: { kind: "error", text: "The payment was not completed. No money was added." },
+  cancelled: { kind: "error", text: "Payment cancelled." },
+};
+
+/** "Add balance": an amount box that sends the customer to ZiniPay (bKash, Nagad, …). */
+function AddBalanceForm() {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function pay(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const { paymentUrl } = await apiFetch<{ paymentUrl: string }>("/api/me/deposits", { method: "POST", body: { amount } });
+      window.location.assign(paymentUrl);
+    } catch (payError) {
+      setError(fieldErrorsOf(payError).amount ?? errorMessage(payError));
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="btn-neon mt-3 min-h-9! w-full px-3! text-xs sm:text-sm">
+        <PlusCircle aria-hidden className="size-4" /> Add balance
+      </button>
+    );
+  }
+  return (
+    <form onSubmit={pay} noValidate className="mt-3 space-y-2">
+      <label htmlFor="deposit-amount" className="sr-only">
+        Amount in taka
+      </label>
+      <div className="relative">
+        <span aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted">
+          ৳
+        </span>
+        <input
+          id="deposit-amount"
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          autoFocus
+          placeholder="Amount"
+          value={amount}
+          aria-invalid={Boolean(error)}
+          onChange={(event) => {
+            setAmount(event.target.value.replace(/[^\d.]/g, "").slice(0, 9));
+            setError(null);
+          }}
+          className="neon-input min-h-9! pl-7! text-sm"
+        />
+      </div>
+      {error && <p className="text-xs text-status-offline">{error}</p>}
+      <div className="flex gap-2">
+        <button type="submit" disabled={busy || !amount} className="btn-neon min-h-9! flex-1 px-3! text-xs sm:text-sm">
+          {busy ? "Opening…" : "Pay now"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} disabled={busy} className="btn-outline min-h-9! px-3! text-xs sm:text-sm">
+          Cancel
+        </button>
+      </div>
+      <p className="text-[11px] leading-snug text-muted">bKash, Nagad and more, via ZiniPay.</p>
+    </form>
+  );
+}
+
+export function AccountDashboard({ contactUrl, onlinePayment }: { contactUrl: string | null; onlinePayment: boolean }) {
   const [me, setMe] = useState<Me | null>(null);
   const [orders, setOrders] = useState<RentOrderDTO[] | null>(null);
   const [stats, setStats] = useState<RentOrderStatsDTO | null>(null);
@@ -318,6 +391,16 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
     },
     [toast],
   );
+
+  // Back from ZiniPay: say how the payment went once, then clean the URL.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const message = DEPOSIT_MESSAGES[url.searchParams.get("deposit") ?? ""];
+    if (!message) return;
+    toast[message.kind](message.text);
+    url.searchParams.delete("deposit");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [toast]);
 
   useEffect(() => {
     // Data comes from the API after mount, so this page needs no server session read.
@@ -407,15 +490,19 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
       {/* Stats */}
       <section aria-label="Account summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={Wallet} tone="primary" label="Current balance" value={formatBdt(me.balance)} hint="Available to spend">
-          {contactUrl && (
-            <a
-              href={contactUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-neon mt-3 min-h-9! w-full px-3! text-xs sm:text-sm"
-            >
-              <PlusCircle aria-hidden className="size-4" /> Add balance
-            </a>
+          {onlinePayment ? (
+            <AddBalanceForm />
+          ) : (
+            contactUrl && (
+              <a
+                href={contactUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-neon mt-3 min-h-9! w-full px-3! text-xs sm:text-sm"
+              >
+                <PlusCircle aria-hidden className="size-4" /> Add balance
+              </a>
+            )
           )}
         </StatCard>
         <StatCard icon={Receipt} tone="purple" label="Total spent" value={formatBdt(s.spentBdt)} hint="On completed orders" />

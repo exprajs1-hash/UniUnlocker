@@ -165,7 +165,7 @@ export interface PexelsPhoto {
 export const RENT_ORDER_STATUSES = ["submitting", "pending", "processing", "completed", "rejected", "failed"] as const;
 export type RentOrderStatus = (typeof RENT_ORDER_STATUSES)[number];
 
-export const BALANCE_TRANSACTION_TYPES = ["admin_credit", "admin_debit", "order", "refund"] as const;
+export const BALANCE_TRANSACTION_TYPES = ["admin_credit", "admin_debit", "order", "refund", "deposit"] as const;
 export type BalanceTransactionType = (typeof BALANCE_TRANSACTION_TYPES)[number];
 
 export interface RentCustomFieldDTO {

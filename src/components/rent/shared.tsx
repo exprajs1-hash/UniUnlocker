@@ -98,6 +98,7 @@ export const TRANSACTION_LABELS: Record<BalanceTransactionType, string> = {
   admin_debit: "Balance deducted",
   order: "Rent order",
   refund: "Refund",
+  deposit: "Online payment",
 };
 
 function CopyButton({ value, label }: { value: string; label: string }) {
