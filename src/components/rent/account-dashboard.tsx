@@ -9,7 +9,6 @@ import {
   Clock,
   Loader,
   Lock,
-  LogOut,
   PlusCircle,
   Receipt,
   RefreshCw,
@@ -342,16 +341,6 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
     };
   }, [hasOpen, load]);
 
-  async function signOut() {
-    try {
-      await apiFetch("/api/customer-auth/logout", { method: "POST" });
-    } finally {
-      // A full load, so no signed-in page stays in the router cache.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/services";
-    }
-  }
-
   if (!me) {
     return (
       <div role="status" aria-label="Loading" className="space-y-4">
@@ -463,14 +452,6 @@ export function AccountDashboard({ contactUrl }: { contactUrl: string | null }) 
           <Link href="/services" className="btn-neon min-h-10! px-4! text-sm">
             <ShoppingCart aria-hidden className="size-4" /> Rent a tool
           </Link>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            aria-label="Sign out"
-            className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
-          >
-            <LogOut aria-hidden className="size-4" /> <span className="hidden sm:inline">Sign out</span>
-          </button>
         </div>
       </div>
 

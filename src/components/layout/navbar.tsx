@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, LayoutGrid, LogIn, Menu, Send, Wrench, X } from "lucide-react";
+import { ChevronDown, LayoutGrid, LogIn, LogOut, Menu, Send, UserRound, Wrench, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -62,11 +62,14 @@ function HoverMenu({
   buttonClass,
   align = "right",
   plain = false,
+  ariaLabel,
   children,
 }: {
-  label: string;
+  label: ReactNode;
   icon: ReactNode;
   buttonClass: string;
+  /** Accessible name when `label` is not plain text. */
+  ariaLabel?: string;
   /** Which edge of the button the panel lines up with. */
   align?: "left" | "right";
   /** Use `buttonClass` as is, without the pill button sizing. */
@@ -104,6 +107,7 @@ function HoverMenu({
         type="button"
         aria-haspopup="true"
         aria-expanded={open}
+        aria-label={ariaLabel}
         onClick={() => setOpen((value) => !value)}
         className={plain ? buttonClass : `${buttonClass} min-h-10! px-5! text-sm`}
       >
@@ -249,25 +253,57 @@ function useHeaderCustomer(pathname: string): HeaderCustomer | null | undefined 
   return customer;
 }
 
-/** The customer's photo, name and balance when signed in (links to their account); "Login" otherwise. */
+async function signOutCustomer() {
+  try {
+    await fetch("/api/customer-auth/logout", { method: "POST" });
+  } finally {
+    // A full load, so no signed-in page stays in the router cache.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/services";
+  }
+}
+
+function SignOutButton({ className }: { className: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        void signOutCustomer();
+      }}
+      className={className}
+    >
+      <LogOut aria-hidden className="size-4" /> {busy ? "Signing out…" : "Sign out"}
+    </button>
+  );
+}
+
+/** Signed in: photo and name; hover (or tap) shows the balance, the account link and Sign out. "Login" otherwise. */
 function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer | null | undefined; onClick?: () => void; mobile?: boolean }) {
   if (mobile) {
     return (
-      <Link href={customer ? "/account" : "/login"} onClick={onClick} className="flex items-center gap-3 py-3 font-medium hover:text-cyan">
-        {customer ? (
-          <>
-            <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate">{customer.name}</span>
-              <span className="block text-xs font-semibold text-cyan">Balance {formatTaka(customer.balance)}</span>
-            </span>
-          </>
-        ) : (
-          <>
-            <LogIn aria-hidden className="size-5" /> Login / Register
-          </>
+      <>
+        <Link href={customer ? "/account" : "/login"} onClick={onClick} className="flex items-center gap-3 py-3 font-medium hover:text-cyan">
+          {customer ? (
+            <>
+              <CustomerAvatar src={customer.avatar} name={customer.name} size={32} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{customer.name}</span>
+                <span className="block text-xs font-semibold text-cyan">Balance {formatTaka(customer.balance)}</span>
+              </span>
+            </>
+          ) : (
+            <>
+              <LogIn aria-hidden className="size-5" /> Login / Register
+            </>
+          )}
+        </Link>
+        {customer && (
+          <SignOutButton className="flex w-full items-center gap-3 border-t border-line/30 py-3 font-medium text-muted hover:text-foreground disabled:opacity-60" />
         )}
-      </Link>
+      </>
     );
   }
   if (customer === undefined) {
@@ -282,21 +318,38 @@ function AccountLink({ customer, onClick, mobile }: { customer: HeaderCustomer |
     );
   }
   return (
-    <Link
-      href="/account"
-      onClick={onClick}
-      title={`${customer.name}: my account`}
-      className="flex max-w-44 items-center gap-2 rounded-full border border-line/60 py-1 pr-3.5 pl-1 transition hover:border-cyan"
+    <HoverMenu
+      plain
+      ariaLabel={`${customer.name}: account menu`}
+      label={
+        <>
+          <CustomerAvatar src={customer.avatar} name={customer.name} size={30} />
+          <span className="min-w-0 truncate text-xs font-medium">{customer.name}</span>
+        </>
+      }
+      icon={<ChevronDown aria-hidden className="size-3.5 shrink-0 text-muted" />}
+      buttonClass="flex max-w-44 items-center gap-2 rounded-full border border-line/60 py-1 pr-3 pl-1 transition hover:border-cyan aria-expanded:border-cyan"
     >
-      <CustomerAvatar src={customer.avatar} name={customer.name} size={30} />
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-xs font-medium">{customer.name}</span>
-        <span className="block text-xs font-semibold text-cyan tabular-nums">
-          <span className="sr-only">Balance </span>
-          {formatTaka(customer.balance)}
-        </span>
-      </span>
-    </Link>
+      {(close) => (
+        <div className="w-56">
+          <div className="rounded-xl bg-primary/10 px-3 py-2.5">
+            <p className="text-xs text-muted">Balance</p>
+            <p className="text-lg font-bold text-cyan tabular-nums">{formatTaka(customer.balance)}</p>
+          </div>
+          <Link
+            href="/account"
+            onClick={() => {
+              close();
+              onClick?.();
+            }}
+            className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition hover:bg-primary/15 hover:text-cyan"
+          >
+            <UserRound aria-hidden className="size-4" /> My account
+          </Link>
+          <SignOutButton className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-status-offline/10 hover:text-status-offline disabled:opacity-60" />
+        </div>
+      )}
+    </HoverMenu>
   );
 }
 

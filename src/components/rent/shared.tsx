@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Check, Copy, Crown, Gem, Globe, Store, User, Wrench } from "lucide-react";
+import { BadgeCheck, Check, Copy, Crown, Gem, Globe, Lock, Store, User, Wrench } from "lucide-react";
 import { useState } from "react";
 import { SafeImage } from "@/components/ui/safe-image";
 import { isUsableImageUrl } from "@/lib/images";
@@ -27,8 +27,12 @@ export function ToolIcon({ src, name, size = 40 }: { src: string; name: string; 
 /** "৳117" for whole taka, "৳0.50" / "৳116.27" when there are paisa. */
 export const formatBdt = formatTaka;
 
-/** The customer's price, with the public price struck through when they have a special (lower) rate. */
-export function PriceTag({ price, regular }: { price: number; regular?: number }) {
+/**
+ * The customer's price, with the public price struck through when they have a special (lower) rate.
+ * A null price means prices are for signed-in customers only: a "Login to see price" link instead.
+ */
+export function PriceTag({ price, regular }: { price: number | null; regular?: number }) {
+  if (price === null) return <LoginForPrice />;
   return (
     <>
       {regular !== undefined && regular > price && (
@@ -38,6 +42,15 @@ export function PriceTag({ price, regular }: { price: number; regular?: number }
       )}
       {formatBdt(price)}
     </>
+  );
+}
+
+/** Shown in place of a hidden price. Plain text, since it often sits inside a card link. */
+function LoginForPrice() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[0.8rem] font-semibold whitespace-nowrap text-cyan">
+      <Lock aria-hidden className="size-3.5" /> Login to see price
+    </span>
   );
 }
 

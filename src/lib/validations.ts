@@ -362,6 +362,7 @@ export const rentConfigSchema = z.object({
     .min(0, "Markup cannot be negative")
     .max(1000, "This markup is too large"),
   ordersEnabled: z.boolean(),
+  pricesPublic: z.boolean().default(true),
 });
 
 export const rentOrderSchema = z.object({

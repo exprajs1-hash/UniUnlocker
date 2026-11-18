@@ -234,7 +234,8 @@ export interface PublicRentServiceDTO {
   group: string;
   deliveryTime: string;
   info: string;
-  priceBdt: number;
+  /** Null when the admin shows prices to signed-in customers only and the visitor is signed out. */
+  priceBdt: number | null;
   /** The public price, only present when this customer's personal rate is lower. */
   regularPriceBdt?: number;
   customFields: RentCustomFieldDTO[];
@@ -315,6 +316,8 @@ export interface AdminRentServiceDTO {
 export interface RentConfigDTO {
   markupPercent: number;
   ordersEnabled: boolean;
+  /** False: prices are shown to signed-in customers only. */
+  pricesPublic: boolean;
 }
 
 /**

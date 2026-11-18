@@ -78,6 +78,7 @@ const isRent = (service: AdminRentServiceDTO) => /\brent\b/i.test(service.name) 
 function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: number; onSaved: () => void }) {
   const [markup, setMarkup] = useState(String(config.markupPercent));
   const [ordersEnabled, setOrdersEnabled] = useState(config.ordersEnabled);
+  const [pricesPublic, setPricesPublic] = useState(config.pricesPublic);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -87,7 +88,7 @@ function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: n
     setBusy(true);
     setErrors({});
     try {
-      await apiFetch("/api/rent-config", { method: "PUT", body: { markupPercent: markup, ordersEnabled } });
+      await apiFetch("/api/rent-config", { method: "PUT", body: { markupPercent: markup, ordersEnabled, pricesPublic } });
       toast.success("Rent settings saved.");
       onSaved();
     } catch (error) {
@@ -119,7 +120,10 @@ function PricingCard({ config, rate, onSaved }: { config: RentConfigDTO; rate: n
         error={errors.markupPercent}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Toggle label="Accept new orders" checked={ordersEnabled} onChange={setOrdersEnabled} />
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Toggle label="Accept new orders" checked={ordersEnabled} onChange={setOrdersEnabled} />
+          <Toggle label="Show prices to everyone (off: logged-in customers only)" checked={pricesPublic} onChange={setPricesPublic} />
+        </div>
         <button type="submit" disabled={busy} className="admin-btn admin-btn-primary">
           {busy ? "Saving…" : "Save"}
         </button>

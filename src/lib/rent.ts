@@ -40,6 +40,7 @@ export interface Pricing {
   rate: number;
   markupPercent: number;
   ordersEnabled: boolean;
+  pricesPublic: boolean;
 }
 
 export async function getPricing(): Promise<Pricing> {
@@ -52,11 +53,12 @@ export async function getPricing(): Promise<Pricing> {
     rate: settings?.usdToBdtRate && settings.usdToBdtRate > 0 ? settings.usdToBdtRate : DEFAULT_USD_TO_BDT,
     markupPercent: config?.markupPercent ?? 20,
     ordersEnabled: config?.ordersEnabled ?? true,
+    pricesPublic: config?.pricesPublic ?? true,
   };
 }
 
 export function toRentConfigDTO(pricing: Pricing): RentConfigDTO {
-  return { markupPercent: pricing.markupPercent, ordersEnabled: pricing.ordersEnabled };
+  return { markupPercent: pricing.markupPercent, ordersEnabled: pricing.ordersEnabled, pricesPublic: pricing.pricesPublic };
 }
 
 /**
@@ -93,7 +95,13 @@ export function customerPrice(service: PricedService, pricing: Pricing, adjustPe
 
 type ServiceDoc = IRentService & { _id: unknown; createdAt?: Date };
 
-export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent = 0): PublicRentServiceDTO {
+/** Whether this visitor may see prices: always when public, otherwise only when signed in. */
+export function canSeePrices(pricing: Pricing, signedIn: boolean): boolean {
+  return pricing.pricesPublic || signedIn;
+}
+
+/** With `showPrice` false the price is left out entirely, so it never reaches a signed-out visitor. */
+export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent = 0, showPrice = true): PublicRentServiceDTO {
   const regular = effectivePrice(doc, pricing);
   const price = customerPrice(doc, pricing, adjustPercent);
   return {
@@ -105,9 +113,9 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent
     group: doc.group,
     deliveryTime: doc.deliveryTime,
     info: doc.description ?? "",
-    priceBdt: price,
+    priceBdt: showPrice ? price : null,
     // Only a discount is shown against the public price; a higher personal rate is not revealed.
-    ...(price < regular ? { regularPriceBdt: regular } : {}),
+    ...(showPrice && price < regular ? { regularPriceBdt: regular } : {}),
     customFields: doc.customFields ?? [],
     minQuantity: doc.minQuantity ?? 1,
     maxQuantity: doc.maxQuantity ?? 1,

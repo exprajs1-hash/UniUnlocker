@@ -191,7 +191,9 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
   const parsedQuantity = Number(quantityText);
   const quantityValid = Number.isInteger(parsedQuantity) && parsedQuantity >= minQuantity && parsedQuantity <= maxQuantity;
   const quantity = quantityValid ? parsedQuantity : minQuantity;
-  const total = service.priceBdt * quantity;
+  // Null only for a signed-out visitor when prices are for customers only; they cannot order anyway.
+  const unitPrice = service.priceBdt;
+  const total = (unitPrice ?? 0) * quantity;
   const balance = me?.balance ?? 0;
   const shortBy = total - balance;
   const fixedQuantity = minQuantity === maxQuantity;
@@ -331,24 +333,30 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
         </div>
       )}
 
-      <dl className="divide-y divide-line/30 rounded-xl border border-line/40 bg-background/30 text-sm">
-        <div className="flex justify-between gap-3 px-4 py-2.5">
-          <dt className="text-muted">Service cost</dt>
-          <dd className="font-semibold">{formatBdt(service.priceBdt)}</dd>
-        </div>
-        <div className="flex justify-between gap-3 px-4 py-2.5">
-          <dt className="text-muted">Estimated total{quantity > 1 && ` (× ${quantity})`}</dt>
-          <dd className="font-bold text-neon">{formatBdt(total)}</dd>
-        </div>
-        {me && (
+      {unitPrice === null ? (
+        <p className="flex items-center gap-2 rounded-xl border border-line/40 bg-background/30 px-4 py-2.5 text-sm text-muted">
+          <Lock aria-hidden className="size-4 shrink-0 text-cyan" /> Sign in to see the price of this service.
+        </p>
+      ) : (
+        <dl className="divide-y divide-line/30 rounded-xl border border-line/40 bg-background/30 text-sm">
           <div className="flex justify-between gap-3 px-4 py-2.5">
-            <dt className="text-muted">Account balance</dt>
-            <dd className={`font-semibold ${shortBy > 0 ? "text-status-offline" : "text-status-online"}`}>
-              {formatBdt(balance)}
-            </dd>
+            <dt className="text-muted">Service cost</dt>
+            <dd className="font-semibold">{formatBdt(unitPrice)}</dd>
           </div>
-        )}
-      </dl>
+          <div className="flex justify-between gap-3 px-4 py-2.5">
+            <dt className="text-muted">Estimated total{quantity > 1 && ` (× ${quantity})`}</dt>
+            <dd className="font-bold text-neon">{formatBdt(total)}</dd>
+          </div>
+          {me && (
+            <div className="flex justify-between gap-3 px-4 py-2.5">
+              <dt className="text-muted">Account balance</dt>
+              <dd className={`font-semibold ${shortBy > 0 ? "text-status-offline" : "text-status-online"}`}>
+                {formatBdt(balance)}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
 
       {error && (
         <p role="alert" className="rounded-md border border-status-offline/40 bg-status-offline/10 px-3 py-2 text-sm">
