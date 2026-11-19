@@ -31,6 +31,31 @@ export async function getProviderCredentials(id: Types.ObjectId | string, requir
   return credentialsOf(doc);
 }
 
+/** When each provider's trigger URLs were last fetched, so many open orders do not hit them at once. */
+const lastTriggered = new Map<string, number>();
+const TRIGGER_GAP_MS = 5_000;
+const TRIGGER_TIMEOUT_MS = 15_000;
+
+/**
+ * Fetches a provider's trigger URLs (see IProvider.triggerUrls) before its
+ * orders are checked. Failures are ignored: the status check runs either way.
+ */
+export async function runProviderTriggers(id: Types.ObjectId | string): Promise<void> {
+  const key = String(id);
+  if (Date.now() - (lastTriggered.get(key) ?? 0) < TRIGGER_GAP_MS) return;
+  lastTriggered.set(key, Date.now());
+  const doc = await Provider.findById(id, { triggerUrls: 1 }).lean();
+  // In order, as the provider's own page does, so each finishes before the next starts.
+  for (const url of doc?.triggerUrls ?? []) {
+    try {
+      const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(TRIGGER_TIMEOUT_MS) });
+      await response.body?.cancel();
+    } catch (error) {
+      console.error("[rent] Provider trigger URL failed", url, (error as Error).message);
+    }
+  }
+}
+
 export function toProviderDTO(doc: ProviderDoc, counts?: { services: number; enabled: number }): ProviderDTO {
   const key = doc.apiKeyEncrypted ? decryptSecret(doc.apiKeyEncrypted) : null;
   return {
@@ -43,6 +68,7 @@ export function toProviderDTO(doc: ProviderDoc, counts?: { services: number; ena
     displayOrder: doc.displayOrder,
     useProxy: doc.useProxy ?? false,
     currency: doc.currency ?? "USD",
+    triggerUrls: doc.triggerUrls ?? [],
     serviceCount: counts?.services ?? 0,
     enabledServiceCount: counts?.enabled ?? 0,
   };

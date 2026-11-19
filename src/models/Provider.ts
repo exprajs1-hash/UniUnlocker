@@ -14,6 +14,11 @@ export interface IProvider {
   useProxy: boolean;
   /** Currency the provider's credit and service costs are in. */
   currency: "USD" | "BDT";
+  /**
+   * URLs fetched before each status check, for panels that only process orders
+   * while someone has their site open (their "cron" runs from visitors' browsers).
+   */
+  triggerUrls: string[];
 }
 
 const ProviderSchema = new Schema<IProvider>(
@@ -26,6 +31,7 @@ const ProviderSchema = new Schema<IProvider>(
     displayOrder: { type: Number, default: 0 },
     useProxy: { type: Boolean, default: false },
     currency: { type: String, enum: ["USD", "BDT"], default: "USD" },
+    triggerUrls: { type: [String], default: [] },
   },
   { timestamps: true },
 );

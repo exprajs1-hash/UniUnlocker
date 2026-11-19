@@ -390,6 +390,24 @@ export const providerSchema = z.object({
   useProxy: z.boolean().default(false),
   /** "auto" reads it from the provider's account info when saving. */
   currency: z.enum(["auto", "USD", "BDT"]).default("auto"),
+  /** One URL per line; see IProvider.triggerUrls. */
+  triggerUrls: z
+    .string()
+    .default("")
+    .transform((value) => [...new Set(value.split(/\s+/).filter(Boolean))])
+    .pipe(
+      z
+        .array(
+          z.string().max(500, "A trigger URL is too long").refine((value) => {
+            try {
+              return ["http:", "https:"].includes(new URL(value).protocol);
+            } catch {
+              return false;
+            }
+          }, "Each trigger URL must be a full http(s) link"),
+        )
+        .max(5, "Add at most 5 trigger URLs"),
+    ),
 });
 
 export const providerPatchSchema = z.object({ enabled: z.boolean() });

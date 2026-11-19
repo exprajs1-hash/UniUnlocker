@@ -342,6 +342,11 @@ export async function getProviderOrder(credentials: ProviderCredentials, referen
   }
 
   const raw = String(pick(result, "STATUS", "ORDERSTATUS") ?? "");
-  const code = resultText(pick(result, "CODE", "RESULT", "COMMENTS"));
-  return { state: parseProviderState(raw), result: code, raw };
+  // Panels split a delivery across fields (e.g. username in CODE, password in COMMENTS), so keep every one.
+  const parts: string[] = [];
+  for (const name of ["CODE", "RESULT", "COMMENTS"]) {
+    const text = resultText(pick(result, name));
+    if (text && !parts.includes(text)) parts.push(text);
+  }
+  return { state: parseProviderState(raw), result: parts.join("\n"), raw };
 }

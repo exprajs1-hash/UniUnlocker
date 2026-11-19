@@ -43,6 +43,7 @@ export const PUT = adminRoute<IdContext>(async (request, { params }) => {
         apiKeyEncrypted: encryptSecret(key),
         useProxy: data.useProxy,
         currency,
+        triggerUrls: data.triggerUrls,
       },
     },
     { returnDocument: "after" },

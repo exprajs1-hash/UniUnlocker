@@ -261,6 +261,8 @@ export interface ProviderDTO {
   useProxy: boolean;
   /** Currency the provider charges in; BDT costs are used as-is, USD costs × the USD rate. */
   currency: "USD" | "BDT";
+  /** Fetched before each status check (panels that only work while their site is open). */
+  triggerUrls: string[];
   serviceCount: number;
   enabledServiceCount: number;
 }

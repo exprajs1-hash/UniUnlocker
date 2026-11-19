@@ -2,7 +2,7 @@
 
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { SelectField, TextField, Toggle } from "@/components/admin/form";
+import { SelectField, TextAreaField, TextField, Toggle } from "@/components/admin/form";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, clearFieldError, errorMessage, fieldErrorsOf } from "@/lib/client-api";
@@ -24,11 +24,12 @@ function ProviderForm({
     key: "",
     useProxy: provider?.useProxy ?? false,
     currency: (provider?.currency ?? "auto") as "auto" | "USD" | "BDT",
+    triggerUrls: (provider?.triggerUrls ?? []).join("\n"),
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const set = (field: "name" | "url" | "username" | "key") => (value: string) => {
+  const set = (field: "name" | "url" | "username" | "key" | "triggerUrls") => (value: string) => {
     setDraft((current) => ({ ...current, [field]: value }));
     setErrors((current) => clearFieldError(current, field));
   };
@@ -100,6 +101,14 @@ function ProviderForm({
           Turn on for providers that only allow whitelisted IPs. Give them the proxy server&apos;s IP (set by PROVIDER_PROXY_URL).
         </p>
       </div>
+      <TextAreaField
+        label="Status trigger URLs (optional)"
+        rows={3}
+        value={draft.triggerUrls}
+        onChange={set("triggerUrls")}
+        error={errors.triggerUrls}
+        hint="One per line. Opened before each order status check, for panels that only finish orders while their own site is open (their page calls /cron/... links). Leave blank for normal providers."
+      />
       <p className="text-xs text-admin-muted">The details are tested with the provider before they are saved.</p>
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">

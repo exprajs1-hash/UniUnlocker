@@ -8,7 +8,7 @@ import {
   ProviderUnavailableError,
 } from "@/lib/gsm-api";
 import { connectToDatabase } from "@/lib/mongodb";
-import { getProviderCredentials } from "@/lib/providers";
+import { getProviderCredentials, runProviderTriggers } from "@/lib/providers";
 import { stripProviderContacts } from "@/lib/provider-text";
 import { effectiveCategory } from "@/lib/rent-category";
 import { ceilMoney, isMoney, roundMoney } from "@/lib/money";
@@ -438,6 +438,7 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
   let status;
   try {
     const credentials = await getProviderCredentials(order.provider!);
+    await runProviderTriggers(order.provider!);
     status = await getProviderOrder(credentials, order.providerOrderId);
   } catch (error) {
     const message = (error as Error).message || String(error);

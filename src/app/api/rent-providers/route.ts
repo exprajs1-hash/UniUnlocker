@@ -44,6 +44,7 @@ export const POST = adminRoute(async (request) => {
     apiKeyEncrypted: encryptSecret(data.key),
     useProxy: data.useProxy,
     currency: data.currency === "auto" ? normalizeCurrency(detected) : data.currency,
+    triggerUrls: data.triggerUrls,
     displayOrder: count,
   });
   return json({ provider: toProviderDTO(provider.toObject()) }, 201);
