@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Wallet } from "lucide-react";
+import { Search, Trash2, Wallet } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminEmpty, ListSkeleton, LoadError, PageHeader, SelectField, TextField, Toggle } from "@/components/admin/form";
 import {
@@ -12,7 +12,7 @@ import {
   OrderStatusBadge,
   TRANSACTION_LABELS,
 } from "@/components/rent/shared";
-import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { useToast } from "@/components/ui/toast";
 import { useResource } from "@/hooks/use-resource";
@@ -224,9 +224,19 @@ function TagForm({ customer, onDone }: { customer: CustomerDTO; onDone: (custome
   );
 }
 
-function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: CustomerDTO) => void }) {
+function CustomerDetail({
+  id,
+  onChanged,
+  onDeleted,
+}: {
+  id: string;
+  onChanged: (customer: CustomerDTO) => void;
+  onDeleted: () => void;
+}) {
   const { data, error, loading, reload, setData } = useResource<Detail>(`/api/customers/${id}`);
   const [tab, setTab] = useState<"wallet" | "orders">("wallet");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const toast = useToast();
 
   if (loading) return <ListSkeleton rows={3} />;
@@ -244,6 +254,20 @@ function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: C
     }
   }
 
+  async function deleteCustomer() {
+    setDeleting(true);
+    try {
+      await apiFetch(`/api/customers/${id}`, { method: "DELETE" });
+      toast.success(`${customer.name} deleted.`);
+      setConfirmingDelete(false);
+      onDeleted();
+    } catch (deleteError) {
+      toast.error(errorMessage(deleteError));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -257,6 +281,17 @@ function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: C
         </div>
         <Toggle label={customer.active ? "Active" : "Blocked"} checked={customer.active} onChange={(value) => void setActive(value)} />
       </div>
+
+      {customer.autoBlocked && !customer.active && (
+        <p className="rounded-lg border border-status-offline/40 bg-status-offline/10 p-3 text-sm text-status-offline">
+          Locked automatically after 5 wrong passwords. Turn the switch on to unlock the account.
+        </p>
+      )}
+      {customer.active && (customer.failedLogins ?? 0) > 0 && (
+        <p className="text-sm text-status-maintenance">
+          {customer.failedLogins} wrong password{customer.failedLogins === 1 ? "" : "s"} since the last sign-in. The account locks at 5.
+        </p>
+      )}
 
       <TagForm
         customer={customer}
@@ -338,6 +373,21 @@ function CustomerDetail({ id, onChanged }: { id: string; onChanged: (customer: C
           </ul>
         )}
       </div>
+
+      <div className="flex justify-end border-t border-admin-line pt-4">
+        <button type="button" onClick={() => setConfirmingDelete(true)} className="admin-btn admin-btn-danger">
+          <Trash2 aria-hidden className="size-4" /> Delete customer
+        </button>
+      </div>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete customer?"
+        message={`${customer.name}'s account, wallet history and ${formatBdt(customer.balance)} balance will be removed for good. Their past orders stay in Rent orders as "Deleted customer". This cannot be undone.`}
+        busy={deleting}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => void deleteCustomer()}
+      />
     </div>
   );
 }
@@ -407,7 +457,9 @@ export function CustomersManager() {
                     <p className="truncate font-medium">
                       {customer.name}
                       {customer.tag && customer.tag !== "customer" && <CustomerTagBadge tag={customer.tag} className="ml-2 align-middle" />}
-                      {!customer.active && <span className="ml-2 text-xs text-status-offline">Blocked</span>}
+                      {!customer.active && (
+                        <span className="ml-2 text-xs text-status-offline">{customer.autoBlocked ? "Locked (wrong passwords)" : "Blocked"}</span>
+                      )}
                       {(customer.priceAdjustPercent ?? 0) !== 0 && (
                         <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                           Rate {rateLabel(customer.priceAdjustPercent)}
@@ -448,6 +500,10 @@ export function CustomersManager() {
             onChanged={(customer) => {
               updateRow(customer);
               setSelected(customer);
+            }}
+            onDeleted={() => {
+              setSelected(null);
+              reload();
             }}
           />
         )}

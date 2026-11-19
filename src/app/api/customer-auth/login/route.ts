@@ -9,6 +9,9 @@ import { Customer } from "@/models/Customer";
 const WINDOW_SECONDS = 15 * 60;
 const MAX_ATTEMPTS_PER_IP = 15;
 const MAX_ATTEMPTS_PER_EMAIL = 10;
+/** Wrong passwords in a row before the account is blocked; only an admin can unblock it. */
+const MAX_WRONG_PASSWORDS = 5;
+const LOCKED_MESSAGE = "This account was locked after too many wrong passwords. Please contact support to unlock it.";
 
 // Compared against when the email is unknown, so response time does not reveal whether an account exists.
 const DUMMY_HASH = "$2b$12$75ijV/TUu9hl/OPqMqZ8vebjmtcmn38tfm5Nj2k0JEDuFs64QwynK";
@@ -32,9 +35,27 @@ export const POST = route(async (request) => {
   await connectToDatabase();
   const customer = await Customer.findOne({ email }).select("+passwordHash").lean();
   const valid = await bcrypt.compare(password, customer?.passwordHash ?? DUMMY_HASH);
+  if (customer && !valid && customer.active) {
+    // Count the wrong password; the one that reaches the limit blocks the account until an admin unblocks it.
+    const counted = await Customer.findOneAndUpdate(
+      { _id: customer._id, active: true },
+      { $inc: { failedLogins: 1 } },
+      { returnDocument: "after", projection: { failedLogins: 1 } },
+    ).lean();
+    if (counted && counted.failedLogins >= MAX_WRONG_PASSWORDS) {
+      await Customer.updateOne(
+        { _id: customer._id, active: true },
+        { $set: { active: false, autoBlocked: true }, $inc: { tokenVersion: 1 } },
+      );
+      throw new ApiError(403, LOCKED_MESSAGE);
+    }
+  }
   if (!customer || !valid) throw new ApiError(401, "Incorrect email or password.");
-  if (!customer.active) throw new ApiError(403, "This account has been suspended. Please contact support.");
+  if (!customer.active) {
+    throw new ApiError(403, customer.autoBlocked ? LOCKED_MESSAGE : "This account has been suspended. Please contact support.");
+  }
 
+  if (customer.failedLogins) await Customer.updateOne({ _id: customer._id }, { $set: { failedLogins: 0 } });
   await Promise.all([
     resetRateLimit("customer-login-ip", ip, WINDOW_SECONDS),
     resetRateLimit("customer-login-email", email, WINDOW_SECONDS),

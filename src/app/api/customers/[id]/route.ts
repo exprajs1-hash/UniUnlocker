@@ -5,6 +5,8 @@ import { serialize, serializeMany } from "@/lib/serialize";
 import { customerPatchSchema } from "@/lib/validations";
 import { BalanceTransaction } from "@/models/BalanceTransaction";
 import { Customer } from "@/models/Customer";
+import { Deposit } from "@/models/Deposit";
+import { EmailOtp } from "@/models/EmailOtp";
 import { RentOrder } from "@/models/RentOrder";
 import type { BalanceTransactionDTO, CustomerDTO } from "@/types";
 
@@ -27,13 +29,16 @@ export const GET = adminRoute<IdContext>(async (_request, { params }) => {
   });
 });
 
-/** Block/unblock, set the personal price rate or the display tag. Blocking also signs the customer out everywhere. */
+/**
+ * Block/unblock, set the personal price rate or the display tag. Blocking also signs the
+ * customer out everywhere; unblocking clears the wrong-password count and the auto-lock.
+ */
 export const PATCH = adminRoute<IdContext>(async (request, { params }) => {
   const id = parseObjectId((await params).id);
   const { active, priceAdjustPercent, tag } = customerPatchSchema.parse(await readJson(request));
   await connectToDatabase();
   const set = {
-    ...(active !== undefined ? { active } : {}),
+    ...(active !== undefined ? { active, failedLogins: 0, autoBlocked: false } : {}),
     ...(priceAdjustPercent !== undefined ? { priceAdjustPercent } : {}),
     ...(tag !== undefined ? { tag } : {}),
   };
@@ -44,4 +49,29 @@ export const PATCH = adminRoute<IdContext>(async (request, { params }) => {
   }).lean();
   if (!customer) throw NOT_FOUND;
   return json({ customer: serialize<CustomerDTO>(customer) });
+});
+
+/**
+ * Deletes the account, its wallet history, its deposits and any pending email codes.
+ * Orders are kept for the admin's records and show as "Deleted customer". Refused while
+ * an order is still running, since a refund would have no wallet to go back to.
+ */
+export const DELETE = adminRoute<IdContext>(async (_request, { params }) => {
+  const id = parseObjectId((await params).id);
+  await connectToDatabase();
+  const customer = await Customer.findById(id, { email: 1 }).lean();
+  if (!customer) throw NOT_FOUND;
+
+  const running = await RentOrder.exists({ customer: id, status: { $in: ["submitting", "pending", "processing"] } });
+  if (running) {
+    throw new ApiError(409, "This customer has orders still in progress. Finish or refund them before deleting the account.");
+  }
+
+  await Customer.deleteOne({ _id: id });
+  await Promise.all([
+    BalanceTransaction.deleteMany({ customer: id }),
+    Deposit.deleteMany({ customer: id }),
+    EmailOtp.deleteMany({ email: customer.email }),
+  ]);
+  return json({ ok: true });
 });

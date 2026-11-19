@@ -349,6 +349,10 @@ export interface CustomerDTO {
   /** Personal rate vs the public price; missing on customers saved before it existed (= 0). */
   priceAdjustPercent?: number;
   active: boolean;
+  /** Wrong passwords in a row; missing on customers saved before it existed (= 0). */
+  failedLogins?: number;
+  /** Blocked automatically after too many wrong passwords. */
+  autoBlocked?: boolean;
   createdAt: string;
 }
 

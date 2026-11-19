@@ -20,6 +20,10 @@ export interface ICustomer {
   avatar: string;
   /** A blocked customer cannot sign in or order. */
   active: boolean;
+  /** Wrong passwords in a row since the last successful sign-in. */
+  failedLogins: number;
+  /** True when the account was blocked automatically after too many wrong passwords. */
+  autoBlocked: boolean;
   /** Bumped to sign the customer out everywhere. */
   tokenVersion: number;
   createdAt: Date;
@@ -36,6 +40,8 @@ const CustomerSchema = new Schema<ICustomer>(
     tag: { type: String, enum: CUSTOMER_TAGS, default: "customer" },
     avatar: { type: String, default: "", trim: true },
     active: { type: Boolean, default: true },
+    failedLogins: { type: Number, default: 0 },
+    autoBlocked: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
