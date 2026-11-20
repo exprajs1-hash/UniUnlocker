@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseResultLines, stripProviderContacts } from "./provider-text";
+import { orderShareText, parseResultLines, stripProviderContacts } from "./provider-text";
 
 test("splits labelled lines so only the value is copied", () => {
   assert.deepEqual(parseResultLines("Username: Trueunlock12@gmail.com\nPassword: 4VyGsYsvh3"), [
@@ -39,4 +39,15 @@ test("drops WhatsApp lines", () => {
 
 test("leaves numeric passwords without a contact word alone", () => {
   assert.equal(stripProviderContacts("Password: 0171234567890"), "Password: 0171234567890");
+});
+
+test("builds the share message: order id, result lines, service name", () => {
+  assert.equal(
+    orderShareText({
+      id: "6aff320536ce47631e2d1f6c",
+      serviceName: "UNLOCK TOOL RENT [6 hours] S-3",
+      result: "Username:824@tool\n  Password : n9359tka\n910unb13\n",
+    }),
+    "✅6aff320536ce47631e2d1f6c\nUsername: 824@tool\nPassword: n9359tka\n910unb13\nUNLOCK TOOL RENT [6 hours] S-3",
+  );
 });

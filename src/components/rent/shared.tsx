@@ -5,7 +5,7 @@ import { useState } from "react";
 import { SafeImage } from "@/components/ui/safe-image";
 import { isUsableImageUrl } from "@/lib/images";
 import { formatTaka } from "@/lib/money";
-import { parseResultLines } from "@/lib/provider-text";
+import { orderShareText, parseResultLines } from "@/lib/provider-text";
 import { CUSTOMER_TAG_LABELS, type BalanceTransactionType, type CustomerTag, type RentOrderStatus } from "@/types";
 
 /** The admin's tool icon, or a wrench on a gradient tile when none is set. */
@@ -129,21 +129,31 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 
 /**
  * The delivered login/code. Each line has its own copy button that copies only
- * the value (not "Username:"); the top button copies all values, one per line.
+ * the value (not "Username:"). With the order given, the top button copies the
+ * whole delivery as one message (order id, result, service name); otherwise all values.
  */
-export function OrderResult({ text }: { text: string }) {
+export function OrderResult({ text, order }: { text: string; order?: { id: string; serviceName: string } }) {
   if (!text) return null;
   const lines = parseResultLines(text);
   const labelled = lines.some((line) => line.label !== null);
 
   return (
     <div className="mt-2 rounded-lg border border-glass/10 bg-background/60 p-2">
-      {lines.length > 1 && labelled && (
+      {order ? (
         <div className="flex justify-end border-b border-glass/10 pb-1">
           <span className="inline-flex items-center gap-1 text-xs opacity-70">
-            Copy all values <CopyButton value={lines.map((line) => line.value).join("\n")} label="Copy all values" />
+            Copy all <CopyButton value={orderShareText({ ...order, result: text })} label="Copy all details" />
           </span>
         </div>
+      ) : (
+        lines.length > 1 &&
+        labelled && (
+          <div className="flex justify-end border-b border-glass/10 pb-1">
+            <span className="inline-flex items-center gap-1 text-xs opacity-70">
+              Copy all values <CopyButton value={lines.map((line) => line.value).join("\n")} label="Copy all values" />
+            </span>
+          </div>
+        )
       )}
       <ul className="font-mono text-sm">
         {lines.map((line, index) => (

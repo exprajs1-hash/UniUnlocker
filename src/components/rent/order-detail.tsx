@@ -273,7 +273,7 @@ export function OrderDetail({ id }: { id: string }) {
       {/* Delivered result */}
       {order.status === "completed" && order.result && (
         <Section icon={KeyRound} title="Your rent details">
-          <OrderResult text={order.result} />
+          <OrderResult text={order.result} order={order} />
         </Section>
       )}
       {order.status !== "completed" && order.result && (

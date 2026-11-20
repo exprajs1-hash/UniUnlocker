@@ -161,7 +161,7 @@ export function RentOrdersManager() {
                     </p>
                   )}
                   {order.status === "completed" ? (
-                    <OrderResult text={order.result} />
+                    <OrderResult text={order.result} order={order} />
                   ) : (
                     order.result && <p className="mt-2 text-sm whitespace-pre-line text-admin-muted">{order.result}</p>
                   )}

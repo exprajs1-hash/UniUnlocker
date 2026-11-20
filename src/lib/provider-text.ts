@@ -26,6 +26,18 @@ export function parseResultLines(text: string): ResultLine[] {
     });
 }
 
+/**
+ * The whole delivery as one message to paste to a customer:
+ *   ✅<order id>
+ *   Username: abc
+ *   Password: xyz
+ *   <service name>
+ */
+export function orderShareText(order: { id: string; serviceName: string; result: string }): string {
+  const lines = parseResultLines(order.result).map((line) => (line.label === null ? line.value : `${line.label}: ${line.value}`));
+  return [`✅${order.id}`, ...lines, order.serviceName.trim()].filter(Boolean).join("\n");
+}
+
 export function stripProviderContacts(text: string): string {
   return text
     .split("\n")

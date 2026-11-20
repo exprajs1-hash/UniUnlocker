@@ -259,7 +259,7 @@ function OrderCard({ order }: { order: RentOrderDTO }) {
       )}
       {order.status === "completed" ? (
         <div className="relative z-10">
-          <OrderResult text={order.result} />
+          <OrderResult text={order.result} order={order} />
         </div>
       ) : order.result ? (
         <p className="mt-2 text-sm whitespace-pre-line text-muted">{order.result}</p>

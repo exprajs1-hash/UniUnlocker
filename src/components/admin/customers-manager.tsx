@@ -367,7 +367,7 @@ function CustomerDetail({
                 <p className="text-xs text-admin-muted">
                   {formatBdt(order.priceBdt)} · <RelativeTime iso={order.createdAt} />
                 </p>
-                {order.status === "completed" && <OrderResult text={order.result} />}
+                {order.status === "completed" && <OrderResult text={order.result} order={order} />}
               </li>
             ))}
           </ul>
