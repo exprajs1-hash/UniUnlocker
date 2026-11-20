@@ -191,10 +191,12 @@ export function OrderDetail({ id }: { id: string }) {
     void load();
   }, [load]);
 
-  // While the order is open, keep checking so the result appears without a reload.
+  // While the order is open (or just completed, as a password may follow), keep checking
+  // so the result appears without a reload.
   const open = order ? OPEN.includes(order.status) : false;
+  const polling = open || Boolean(order?.watching);
   useEffect(() => {
-    if (!open) return;
+    if (!polling) return;
     const tick = () => {
       if (document.visibilityState === "visible") void load();
     };
@@ -204,7 +206,7 @@ export function OrderDetail({ id }: { id: string }) {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [open, load]);
+  }, [polling, load]);
 
   const back = (
     <Link href="/account" className="btn-outline min-h-9! px-3! text-sm font-bold">

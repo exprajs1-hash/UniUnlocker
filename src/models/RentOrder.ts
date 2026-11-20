@@ -28,6 +28,11 @@ export interface IRentOrder {
   adminNote: string;
   refunded: boolean;
   lastCheckedAt: Date | null;
+  /**
+   * After completion the result is checked again until this time: some panels finish
+   * an order with the username and add the password a little later.
+   */
+  resultWatchUntil: Date | null;
   /** Why the last automatic status check failed; empty when it worked. */
   checkError: string;
   /** The status value the provider last sent, as-is (e.g. "4"). */
@@ -63,6 +68,7 @@ const RentOrderSchema = new Schema<IRentOrder>(
     adminNote: { type: String, default: "" },
     refunded: { type: Boolean, default: false },
     lastCheckedAt: { type: Date, default: null },
+    resultWatchUntil: { type: Date, default: null },
     checkError: { type: String, default: "" },
     providerStatus: { type: String, default: "" },
     providerReply: { type: String, default: "" },

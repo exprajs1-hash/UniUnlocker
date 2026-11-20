@@ -248,7 +248,7 @@ export function toOrderDetailDTO(doc: Omit<IRentOrder, "customer"> & { _id: unkn
     history = [{ status: "pending", at: createdAt.toISOString() }];
     if (doc.status !== "pending" && doc.status !== "submitting") history.push({ status: doc.status, at: updatedAt.toISOString() });
   }
-  return { ...toOrderDTO(doc), updatedAt: updatedAt.toISOString(), history };
+  return { ...toOrderDTO(doc), updatedAt: updatedAt.toISOString(), history, watching: isWatchingResult(doc) };
 }
 
 const MAX_FIELD_LENGTH = 300;
@@ -431,9 +431,9 @@ export type RefreshOutcome =
  */
 export async function refreshOrder(order: IRentOrder & { _id: unknown }, force = false): Promise<RefreshOutcome> {
   // Custom (manual) orders have no provider to ask; the admin closes them by hand.
-  if (!["pending", "processing"].includes(order.status) || !order.providerOrderId || !order.provider) {
-    return { checked: false, reason: "skipped" };
-  }
+  if (!order.providerOrderId || !order.provider) return { checked: false, reason: "skipped" };
+  if (isWatchingResult(order)) return refreshCompletedResult(order, force);
+  if (!["pending", "processing"].includes(order.status)) return { checked: false, reason: "skipped" };
   if (!force && order.lastCheckedAt && Date.now() - new Date(order.lastCheckedAt).getTime() < REFRESH_AFTER_MS) {
     return { checked: false, reason: "skipped" };
   }
@@ -463,7 +463,14 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
     await RentOrder.updateOne(
       { _id: id, status: order.status },
       {
-        $set: { status: status.state, result: status.result, checkError: "", providerStatus: status.raw, providerReply: status.reply },
+        $set: {
+          status: status.state,
+          result: status.result,
+          checkError: "",
+          providerStatus: status.raw,
+          providerReply: status.reply,
+          ...(status.state === "completed" ? { resultWatchUntil: new Date(Date.now() + RESULT_WATCH_MS) } : {}),
+        },
         $push: { statusHistory: { status: status.state, at: new Date() } },
       },
     );
@@ -475,6 +482,46 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
     notifyOrderFinished(id);
   }
   return { checked: true, ok: true, state: status.state, raw: status.raw };
+}
+
+/** How long after completion the result is checked again, and how often. */
+const RESULT_WATCH_MS = 30 * 60 * 1000;
+const RESULT_WATCH_GAP_MS = 30_000;
+
+/** A completed provider order whose result may still grow (see IRentOrder.resultWatchUntil). */
+export function isWatchingResult(order: Pick<IRentOrder, "status" | "resultWatchUntil" | "manualAt">): boolean {
+  return (
+    order.status === "completed" &&
+    !order.manualAt &&
+    order.resultWatchUntil != null &&
+    new Date(order.resultWatchUntil).getTime() > Date.now()
+  );
+}
+
+/**
+ * Re-reads a completed order's result. Only the delivered text is updated; the
+ * status stays completed whatever the provider says now, and an admin's edit
+ * (manualAt) is never overwritten.
+ */
+async function refreshCompletedResult(order: IRentOrder & { _id: unknown }, force: boolean): Promise<RefreshOutcome> {
+  if (!force && order.lastCheckedAt && Date.now() - new Date(order.lastCheckedAt).getTime() < RESULT_WATCH_GAP_MS) {
+    return { checked: false, reason: "skipped" };
+  }
+  const id = String(order._id);
+  await RentOrder.updateOne({ _id: id }, { $set: { lastCheckedAt: new Date() } });
+  let status;
+  try {
+    status = await getProviderOrder(await getProviderCredentials(order.provider!), order.providerOrderId);
+  } catch (error) {
+    return { checked: true, ok: false, error: (error as Error).message || String(error) };
+  }
+  if (status.state === "completed" && status.result && status.result !== order.result) {
+    await RentOrder.updateOne(
+      { _id: id, status: "completed", manualAt: null },
+      { $set: { result: status.result, providerReply: status.reply } },
+    );
+  }
+  return { checked: true, ok: true, state: "completed", raw: status.raw };
 }
 
 const HIDDEN = "••••••";
@@ -586,7 +633,14 @@ export async function followUpOrder(orderId: string): Promise<void> {
 }
 
 export async function refreshOpenOrders(filter: Record<string, unknown>, limit = 5): Promise<void> {
-  const open = await RentOrder.find({ ...filter, status: { $in: ["pending", "processing"] } })
+  const open = await RentOrder.find({
+    ...filter,
+    $or: [
+      { status: { $in: ["pending", "processing"] } },
+      // Just completed: the provider may still add to the result (e.g. the password).
+      { status: "completed", manualAt: null, resultWatchUntil: { $gt: new Date() } },
+    ],
+  })
     .sort({ lastCheckedAt: 1 })
     .limit(limit)
     .lean();
