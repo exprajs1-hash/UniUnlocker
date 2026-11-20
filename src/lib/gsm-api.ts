@@ -170,11 +170,23 @@ function parseCredit(value: unknown): number {
 
 const MAX_QUANTITY = 1000;
 
-function quantityLimits(raw: RawService): { minQuantity: number; maxQuantity: number } {
-  if (String(raw.QNT ?? "") !== "1") return { minQuantity: 1, maxQuantity: 1 };
-  const toInt = (value: unknown) => Math.floor(Number(value));
-  const min = Math.min(Math.max(toInt(raw.MINQNT) || 1, 1), MAX_QUANTITY);
-  const max = Math.min(Math.max(toInt(raw.MAXQNT) || min, min), MAX_QUANTITY);
+/**
+ * QNT is not a yes/no flag: panels send the minimum there too ("0" = not sold by
+ * quantity, "5" = at least 5), with MINQNT/MAXQNT as the range.
+ */
+export function quantityLimits(raw: Pick<RawService, "QNT" | "MINQNT" | "MAXQNT">): {
+  minQuantity: number;
+  maxQuantity: number;
+} {
+  const toInt = (value: unknown) => {
+    const number = Math.floor(Number(value));
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  };
+  const qnt = toInt(raw.QNT);
+  const maxRaw = toInt(raw.MAXQNT);
+  if (!qnt && !maxRaw) return { minQuantity: 1, maxQuantity: 1 };
+  const min = Math.min(Math.max(toInt(raw.MINQNT) || qnt, 1), MAX_QUANTITY);
+  const max = Math.min(Math.max(maxRaw || min, min), MAX_QUANTITY);
   return { minQuantity: min, maxQuantity: max };
 }
 
