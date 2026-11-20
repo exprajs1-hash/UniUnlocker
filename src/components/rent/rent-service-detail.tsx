@@ -236,13 +236,15 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
       {service.customFields.map((field) => {
         const id = `field-${field.name}`;
         const fieldError = errors[field.name];
+        // A plain IMEI: digits only, exactly 15.
+        const isImei = field.type === "imei";
         const common = {
           id,
           value: fields[field.name] ?? "",
           "aria-invalid": Boolean(fieldError),
           className: "neon-input",
           onChange: (event: { target: { value: string } }) => {
-            const value = event.target.value;
+            const value = isImei ? event.target.value.replace(/\D/g, "").slice(0, 15) : event.target.value;
             setFields((current) => ({ ...current, [field.name]: value }));
             setErrors((current) => clearFieldError(current, field.name));
           },
@@ -262,9 +264,12 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
                   </option>
                 ))}
               </select>
+            ) : isImei ? (
+              <input {...common} type="text" inputMode="numeric" maxLength={15} autoComplete="off" placeholder="Enter 15-digit IMEI" />
             ) : (
               <input {...common} type="text" maxLength={300} autoComplete="off" placeholder={`Enter ${field.name}`} />
             )}
+            {isImei && <p className="mt-1 text-xs text-muted">Only 15-digit number (dial *#06# to see the IMEI).</p>}
             {field.sensitive && (
               <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted">
                 <Lock aria-hidden className="size-3" /> Only used for this order and hidden once it is finished.

@@ -116,12 +116,19 @@ export interface ProviderCustomField {
   imei?: boolean;
 }
 
-/** The IMEI/main input a service asks for, from the provider's CUSTOM block ("allow": "1"). */
-function imeiField(custom: unknown): ProviderCustomField | null {
-  if (!custom || typeof custom !== "object" || Array.isArray(custom)) return null;
-  const block = custom as { allow?: unknown; customname?: unknown };
-  if (String(block.allow ?? "") !== "1") return null;
-  return { name: String(block.customname ?? "").trim() || "IMEI", type: "text", options: [], required: true, imei: true };
+/**
+ * The IMEI/main input a service asks for. Every IMEI-type service takes one: a plain
+ * 15-digit IMEI (type "imei"), unless the CUSTOM block ("allow": "1") renames it and
+ * allows other text, e.g. "IMEI or SN". Server/remote services only take it via CUSTOM.
+ */
+function imeiField(custom: unknown, serviceType: string): ProviderCustomField | null {
+  const block =
+    custom && typeof custom === "object" && !Array.isArray(custom) ? (custom as { allow?: unknown; customname?: unknown }) : {};
+  if (String(block.allow ?? "") === "1") {
+    return { name: String(block.customname ?? "").trim() || "IMEI", type: "text", options: [], required: true, imei: true };
+  }
+  if (serviceType.toUpperCase() === "IMEI") return { name: "IMEI", type: "imei", options: [], required: true, imei: true };
+  return null;
 }
 
 export interface ProviderService {
@@ -208,7 +215,7 @@ export async function listProviderServices(credentials: ProviderCredentials): Pr
         info: String(raw.INFO ?? "").trim(),
         ...quantityLimits(raw),
         customFields: [
-          ...[imeiField(raw.CUSTOM)].filter((field): field is ProviderCustomField => field !== null),
+          ...[imeiField(raw.CUSTOM, String(raw.SERVICETYPE ?? ""))].filter((field): field is ProviderCustomField => field !== null),
           ...rawCustomFields(raw["Requires.Custom"])
             .filter((field) => field.fieldname)
             .map((field) => ({

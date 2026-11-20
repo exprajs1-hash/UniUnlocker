@@ -261,6 +261,7 @@ function cleanFields(service: IRentService, input: Record<string, unknown>): Rec
     }
     if (value.length > MAX_FIELD_LENGTH) errors[field.name] = `${field.name} is too long`;
     else if (field.options.length > 0 && !field.options.includes(value)) errors[field.name] = `Choose a valid ${field.name}`;
+    else if (field.type === "imei" && !/^\d{15}$/.test(value)) errors[field.name] = "Enter the 15-digit IMEI number";
     else fields[field.name] = value;
   }
   if (Object.keys(errors).length > 0) {
