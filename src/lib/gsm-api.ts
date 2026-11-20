@@ -257,11 +257,16 @@ export function quantityLimits(raw: Pick<RawService, "QNT" | "MINQNT" | "MAXQNT"
     const number = Math.floor(Number(value));
     return Number.isFinite(number) && number > 0 ? number : 0;
   };
-  const qnt = toInt(raw.QNT);
-  const maxRaw = toInt(raw.MAXQNT);
+  const field = (name: string) => {
+    const key = Object.keys(raw).find((candidate) => candidate.toLowerCase() === name.toLowerCase());
+    return key === undefined ? undefined : (raw as Record<string, unknown>)[key];
+  };
+  const qnt = toInt(field("QNT"));
+  const maxRaw = toInt(field("MAXQNT"));
   if (!qnt && !maxRaw) return { minQuantity: 1, maxQuantity: 1 };
-  const min = Math.min(Math.max(toInt(raw.MINQNT) || qnt, 1), MAX_QUANTITY);
-  const max = Math.min(Math.max(maxRaw || min, min), MAX_QUANTITY);
+  const min = Math.min(Math.max(toInt(field("MINQNT")) || qnt, 1), MAX_QUANTITY);
+  // Sold by quantity but no maximum given: the provider sets no upper limit, so ours applies.
+  const max = Math.min(Math.max(maxRaw || MAX_QUANTITY, min), MAX_QUANTITY);
   return { minQuantity: min, maxQuantity: max };
 }
 
