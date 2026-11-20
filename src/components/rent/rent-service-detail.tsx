@@ -238,13 +238,16 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
         const fieldError = errors[field.name];
         // A plain IMEI: digits only, exactly 15.
         const isImei = field.type === "imei";
+        const numeric = isImei || Boolean(field.numeric);
+        const maxLength = Math.min(field.maxLength || 300, 300);
+        const hint = field.hint || (isImei ? "Only 15-digit number (dial *#06# to see the IMEI)." : "");
         const common = {
           id,
           value: fields[field.name] ?? "",
           "aria-invalid": Boolean(fieldError),
           className: "neon-input",
           onChange: (event: { target: { value: string } }) => {
-            const value = isImei ? event.target.value.replace(/\D/g, "").slice(0, 15) : event.target.value;
+            const value = numeric ? event.target.value.replace(/\D/g, "").slice(0, maxLength) : event.target.value;
             setFields((current) => ({ ...current, [field.name]: value }));
             setErrors((current) => clearFieldError(current, field.name));
           },
@@ -264,12 +267,19 @@ function OrderForm({ service, me, ordersEnabled }: { service: PublicRentServiceD
                   </option>
                 ))}
               </select>
-            ) : isImei ? (
-              <input {...common} type="text" inputMode="numeric" maxLength={15} autoComplete="off" placeholder="Enter 15-digit IMEI" />
+            ) : field.type === "textarea" ? (
+              <textarea {...common} rows={3} maxLength={maxLength} placeholder={`Enter ${field.name}`} />
             ) : (
-              <input {...common} type="text" maxLength={300} autoComplete="off" placeholder={`Enter ${field.name}`} />
+              <input
+                {...common}
+                type="text"
+                inputMode={numeric ? "numeric" : undefined}
+                maxLength={maxLength}
+                autoComplete="off"
+                placeholder={isImei ? "Enter 15-digit IMEI" : `Enter ${field.name}`}
+              />
             )}
-            {isImei && <p className="mt-1 text-xs text-muted">Only 15-digit number (dial *#06# to see the IMEI).</p>}
+            {hint && <p className="mt-1 text-xs whitespace-pre-line text-muted">{hint}</p>}
             {field.sensitive && (
               <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted">
                 <Lock aria-hidden className="size-3" /> Only used for this order and hidden once it is finished.

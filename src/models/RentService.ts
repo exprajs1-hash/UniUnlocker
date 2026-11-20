@@ -9,6 +9,12 @@ export interface IRentCustomField {
   imei?: boolean;
   /** A secret (e.g. remote-access password): hidden in the order once it is finished. */
   sensitive?: boolean;
+  /** The provider's help text for the input. */
+  hint?: string;
+  /** Longest value the provider accepts. */
+  maxLength?: number;
+  /** Digits only. */
+  numeric?: boolean;
 }
 
 /** A provider service, copied in by "Sync from provider". Hidden until the admin enables it. */
@@ -82,6 +88,9 @@ const RentServiceSchema = new Schema<IRentService>(
         required: Boolean,
         imei: { type: Boolean, default: false },
         sensitive: { type: Boolean, default: false },
+        hint: { type: String, default: "" },
+        maxLength: Number,
+        numeric: { type: Boolean, default: false },
       },
     ],
     minQuantity: { type: Number, default: 1 },

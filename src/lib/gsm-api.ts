@@ -114,21 +114,83 @@ export interface ProviderCustomField {
   required: boolean;
   /** The provider's IMEI/main input: sent as <IMEI>, not inside CUSTOMFIELD. */
   imei?: boolean;
+  /** The provider's help text for the input, shown under it. */
+  hint?: string;
+  /** Longest value the provider accepts. */
+  maxLength?: number;
+  /** Digits only (the provider's CUSTOM "isalpha": "0"). */
+  numeric?: boolean;
+}
+
+/** Field values are capped at 300 characters on our side whatever the provider allows. */
+const FIELD_MAX = 300;
+
+function plainHint(value: unknown): string {
+  return providerTextToPlain(value).slice(0, 500);
 }
 
 /**
  * The IMEI/main input a service asks for. Every IMEI-type service takes one: a plain
  * 15-digit IMEI (type "imei"), unless the CUSTOM block ("allow": "1") renames it and
- * allows other text, e.g. "IMEI or SN". Server/remote services only take it via CUSTOM.
+ * sets its own rules, e.g. "IMEI or SN". Server/remote services only take it via CUSTOM.
  */
 function imeiField(custom: unknown, serviceType: string): ProviderCustomField | null {
   const block =
-    custom && typeof custom === "object" && !Array.isArray(custom) ? (custom as { allow?: unknown; customname?: unknown }) : {};
+    custom && typeof custom === "object" && !Array.isArray(custom)
+      ? (custom as { allow?: unknown; customname?: unknown; custominfo?: unknown; maxlength?: unknown; isalpha?: unknown })
+      : {};
   if (String(block.allow ?? "") === "1") {
-    return { name: String(block.customname ?? "").trim() || "IMEI", type: "text", options: [], required: true, imei: true };
+    const maxLength = Math.floor(Number(block.maxlength));
+    return {
+      name: String(block.customname ?? "").trim() || "IMEI",
+      type: "text",
+      options: [],
+      required: true,
+      imei: true,
+      hint: plainHint(block.custominfo),
+      maxLength: maxLength > 0 ? Math.min(maxLength, FIELD_MAX) : FIELD_MAX,
+      numeric: String(block.isalpha ?? "") === "0",
+    };
   }
-  if (serviceType.toUpperCase() === "IMEI") return { name: "IMEI", type: "imei", options: [], required: true, imei: true };
+  if (serviceType.toUpperCase() === "IMEI") {
+    return {
+      name: "IMEI",
+      type: "imei",
+      options: [],
+      required: true,
+      imei: true,
+      hint: "Only 15-digit number (dial *#06# to see the IMEI).",
+      maxLength: 15,
+      numeric: true,
+    };
+  }
   return null;
+}
+
+/** Panels mark a required field with "on", "1", "yes" or true. */
+function isRequired(value: unknown): boolean {
+  return ["on", "1", "yes", "true", "required"].includes(String(value ?? "").trim().toLowerCase());
+}
+
+/** Dropdown options arrive comma- or newline-separated, sometimes as an array. */
+function fieldOptions(value: unknown): string[] {
+  const list = Array.isArray(value) ? value.map(String) : String(value ?? "").split(/[,\n\r]+/);
+  return [...new Set(list.map((option) => option.trim()).filter(Boolean))];
+}
+
+/** One "Requires.Custom" entry. Multi-line inputs become "textarea"; anything with options a dropdown. */
+function customField(field: RawCustomField): ProviderCustomField {
+  const options = fieldOptions(field.fieldoptions);
+  const kind = String(field.fieldtype ?? "text").trim().toLowerCase();
+  return {
+    name: String(field.fieldname).trim(),
+    type: options.length > 0 ? "select" : kind === "textarea" ? "textarea" : "text",
+    options,
+    required: isRequired(field.required),
+    hint: plainHint(field.description),
+    maxLength: FIELD_MAX,
+    numeric: kind === "number" || kind === "numeric",
+  };
 }
 
 export interface ProviderService {
@@ -162,7 +224,13 @@ interface RawService {
   "Requires.Custom"?: unknown;
 }
 
-type RawCustomField = { fieldname?: unknown; fieldtype?: unknown; fieldoptions?: unknown; required?: unknown };
+type RawCustomField = {
+  fieldname?: unknown;
+  fieldtype?: unknown;
+  fieldoptions?: unknown;
+  required?: unknown;
+  description?: unknown;
+};
 
 function rawCustomFields(value: unknown): RawCustomField[] {
   const list = Array.isArray(value) ? value : value && typeof value === "object" ? Object.values(value) : [];
@@ -217,16 +285,8 @@ export async function listProviderServices(credentials: ProviderCredentials): Pr
         customFields: [
           ...[imeiField(raw.CUSTOM, String(raw.SERVICETYPE ?? ""))].filter((field): field is ProviderCustomField => field !== null),
           ...rawCustomFields(raw["Requires.Custom"])
-            .filter((field) => field.fieldname)
-            .map((field) => ({
-              name: String(field.fieldname).trim(),
-              type: String(field.fieldtype ?? "text"),
-              options: String(field.fieldoptions ?? "")
-                .split(",")
-                .map((option) => option.trim())
-                .filter(Boolean),
-              required: field.required === "on",
-            })),
+            .filter((field) => String(field.fieldname ?? "").trim())
+            .map(customField),
         ].filter((field, index, all) => all.findIndex((other) => other.name === field.name) === index),
       });
     }

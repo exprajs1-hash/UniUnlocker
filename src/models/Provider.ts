@@ -19,6 +19,8 @@ export interface IProvider {
    * while someone has their site open (their "cron" runs from visitors' browsers).
    */
   triggerUrls: string[];
+  /** When the service list was last copied in (by the admin or the background job). */
+  lastSyncedAt?: Date | null;
 }
 
 const ProviderSchema = new Schema<IProvider>(
@@ -32,6 +34,7 @@ const ProviderSchema = new Schema<IProvider>(
     useProxy: { type: Boolean, default: false },
     currency: { type: String, enum: ["USD", "BDT"], default: "USD" },
     triggerUrls: { type: [String], default: [] },
+    lastSyncedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

@@ -182,7 +182,34 @@ export async function syncProvider(providerId: string): Promise<SyncResult> {
     { provider, serviceId: { $nin: services.map((service) => service.serviceId) } },
     { $set: { availableOnProvider: false } },
   );
+  await Provider.updateOne({ _id: provider }, { $set: { lastSyncedAt: syncedAt } });
   return { total: services.length, added: result.upsertedCount, unavailable: removed.modifiedCount };
+}
+
+/** How old a provider's service list may get before the background job copies it in again. */
+const AUTO_SYNC_EVERY_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Re-syncs the enabled provider with the oldest service list, if it is over
+ * 6 hours old, so new input fields, quantity limits and costs reach the site
+ * without the admin pressing Sync. One provider per call keeps each run short.
+ */
+export async function autoSyncStaleProvider(): Promise<void> {
+  const cutoff = new Date(Date.now() - AUTO_SYNC_EVERY_MS);
+  const stale = await Provider.findOne(
+    { enabled: true, $or: [{ lastSyncedAt: null }, { lastSyncedAt: { $lt: cutoff } }] },
+    { _id: 1, name: 1 },
+  )
+    .sort({ lastSyncedAt: 1 })
+    .lean();
+  if (!stale) return;
+  try {
+    await syncProvider(String(stale._id));
+  } catch (error) {
+    // Try again next window rather than on every run while the provider is down.
+    await Provider.updateOne({ _id: stale._id }, { $set: { lastSyncedAt: new Date() } });
+    console.error(`[rent] Automatic sync of "${stale.name}" failed:`, (error as Error).message);
+  }
 }
 
 /** Ids of providers whose services may be shown and ordered. */

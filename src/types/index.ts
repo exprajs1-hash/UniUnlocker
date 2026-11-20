@@ -176,6 +176,12 @@ export interface RentCustomFieldDTO {
   imei?: boolean;
   /** A secret the customer types (e.g. a remote-access password): hidden once the order is finished. */
   sensitive?: boolean;
+  /** The provider's help text, shown under the input. */
+  hint?: string;
+  /** Longest value accepted (never more than 300). */
+  maxLength?: number;
+  /** Digits only. */
+  numeric?: boolean;
 }
 
 /** What visitors see: the selling price only, never the provider cost. */

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { ApiError, json, route } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
+import { autoSyncStaleProvider } from "@/lib/providers";
 import { refreshOpenOrders } from "@/lib/rent";
 
 /** Open orders checked per run, oldest check first. */
@@ -27,5 +28,7 @@ export const GET = route(async (request) => {
   if (!authorized(request)) throw new ApiError(401, "Not allowed.");
   await connectToDatabase();
   await refreshOpenOrders({}, BATCH);
+  // Keeps each provider's service list (input fields, quantity limits, costs) fresh.
+  await autoSyncStaleProvider().catch((error: unknown) => console.error("[rent] Automatic sync failed:", error));
   return json({ ok: true });
 });
