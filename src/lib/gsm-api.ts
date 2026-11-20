@@ -1,5 +1,6 @@
 import "server-only";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
+import { MAX_ORDER_QUANTITY } from "@/lib/quantity";
 
 /**
  * Client for the GSM-THEME reseller API, which follows the DHRU Fusion format:
@@ -243,7 +244,7 @@ function parseCredit(value: unknown): number {
   return Number.isFinite(amount) && amount > 0 ? amount : 0;
 }
 
-const MAX_QUANTITY = 1000;
+
 
 /**
  * QNT is not a yes/no flag: panels send the minimum there too ("0" = not sold by
@@ -264,9 +265,9 @@ export function quantityLimits(raw: Pick<RawService, "QNT" | "MINQNT" | "MAXQNT"
   const qnt = toInt(field("QNT"));
   const maxRaw = toInt(field("MAXQNT"));
   if (!qnt && !maxRaw) return { minQuantity: 1, maxQuantity: 1 };
-  const min = Math.min(Math.max(toInt(field("MINQNT")) || qnt, 1), MAX_QUANTITY);
+  const min = Math.min(Math.max(toInt(field("MINQNT")) || qnt, 1), MAX_ORDER_QUANTITY);
   // Sold by quantity but no maximum given: the provider sets no upper limit, so ours applies.
-  const max = Math.min(Math.max(maxRaw || MAX_QUANTITY, min), MAX_QUANTITY);
+  const max = Math.min(Math.max(maxRaw || MAX_ORDER_QUANTITY, min), MAX_ORDER_QUANTITY);
   return { minQuantity: min, maxQuantity: max };
 }
 

@@ -19,6 +19,7 @@ import { BalanceTransaction } from "@/models/BalanceTransaction";
 import { Customer } from "@/models/Customer";
 import { Provider } from "@/models/Provider";
 import { RentConfig } from "@/models/RentConfig";
+import { effectiveQuantityLimits } from "@/lib/quantity";
 import { RentOrder, type IRentOrder } from "@/models/RentOrder";
 import { RentService, type IRentService } from "@/models/RentService";
 import { WebsiteSettings } from "@/models/WebsiteSettings";
@@ -117,8 +118,7 @@ export function toPublicService(doc: ServiceDoc, pricing: Pricing, adjustPercent
     // Only a discount is shown against the public price; a higher personal rate is not revealed.
     ...(showPrice && price < regular ? { regularPriceBdt: regular } : {}),
     customFields: doc.customFields ?? [],
-    minQuantity: doc.minQuantity ?? 1,
-    maxQuantity: doc.maxQuantity ?? 1,
+    ...effectiveQuantityLimits(doc),
     addedAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
     featured: doc.featured ?? false,
     hot: doc.hot ?? false,
@@ -145,6 +145,10 @@ export function toAdminService(
     providerName: doc.manual ? "Custom service" : (providerNames.get(String(doc.provider)) ?? "Deleted provider"),
     costCurrency: doc.costCurrency ?? "USD",
     effectivePriceBdt: effectivePrice(doc, pricing),
+    // minQuantity/maxQuantity stay the provider's; these are the admin's override.
+    quantityMode: doc.quantityMode ?? "auto",
+    customMinQuantity: doc.customMinQuantity ?? 1,
+    customMaxQuantity: doc.customMaxQuantity ?? 100,
   };
 }
 
@@ -306,8 +310,7 @@ export async function placeOrder(
       });
 
   const fields = cleanFields(service, input);
-  const minQuantity = service.minQuantity ?? 1;
-  const maxQuantity = service.maxQuantity ?? 1;
+  const { minQuantity, maxQuantity } = effectiveQuantityLimits(service);
   if (!Number.isInteger(quantity) || quantity < minQuantity || quantity > maxQuantity) {
     const allowed = minQuantity === maxQuantity ? `${minQuantity}` : `${minQuantity}–${maxQuantity}`;
     throw new ApiError(422, "Please check the highlighted fields.", undefined, { quantity: `Quantity must be ${allowed}` });

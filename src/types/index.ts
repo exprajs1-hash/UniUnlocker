@@ -288,8 +288,13 @@ export interface AdminRentServiceDTO {
   provider: string;
   /** A service the admin made and delivers by hand; no provider involved. */
   manual: boolean;
+  /** The provider's limits, as last synced. */
   minQuantity: number;
   maxQuantity: number;
+  /** Admin override: "auto" (provider's limits), "locked" (fixed) or "open" (customMin–customMax). */
+  quantityMode: "auto" | "locked" | "open";
+  customMinQuantity: number;
+  customMaxQuantity: number;
   providerName: string;
   serviceId: number;
   name: string;

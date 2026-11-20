@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isUsableImageUrl } from "@/lib/images";
 import { isMoney } from "@/lib/money";
 import { DEFAULT_USD_TO_BDT } from "@/lib/pricing";
+import { MAX_ORDER_QUANTITY, QUANTITY_MODES } from "@/lib/quantity";
 import { SERVICE_ICON_NAMES } from "@/lib/service-icons";
 import { SLUG_PATTERN } from "@/lib/service-categories";
 import { CATEGORY_ICON_NAMES, CUSTOMER_TAGS, PROJECT_STATUSES, SERVER_STATUSES } from "@/types";
@@ -321,6 +322,12 @@ export const customerPatchSchema = z
     "Nothing to update.",
   );
 
+const quantityLimit = z.coerce
+  .number({ error: "Enter a whole number" })
+  .int("Enter a whole number")
+  .min(1, "At least 1")
+  .max(MAX_ORDER_QUANTITY, `At most ${MAX_ORDER_QUANTITY}`);
+
 /** Every key is optional with no defaults, so a PATCH only touches what it sends. */
 export const rentServicePatchSchema = z.object({
   enabled: z.boolean().optional(),
@@ -354,7 +361,13 @@ export const rentServicePatchSchema = z.object({
     )
     .optional(),
   displayOrder: z.coerce.number().int().min(0).max(100000).optional(),
-});
+  quantityMode: z.enum(QUANTITY_MODES, { error: "Choose a quantity option" }).optional(),
+  customMinQuantity: quantityLimit.optional(),
+  customMaxQuantity: quantityLimit.optional(),
+}).refine(
+  (data) => data.customMinQuantity === undefined || data.customMaxQuantity === undefined || data.customMaxQuantity >= data.customMinQuantity,
+  { path: ["customMaxQuantity"], message: "Max must be at least the min" },
+);
 
 export const rentConfigSchema = z.object({
   markupPercent: z.coerce

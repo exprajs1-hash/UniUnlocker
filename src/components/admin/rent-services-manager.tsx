@@ -151,6 +151,13 @@ function ServiceForm({
   const nameOf = (slug: string) => categories.find((item) => item.slug === slug)?.name ?? slug;
   const [price, setPrice] = useState(service.priceBdt === null ? "" : String(service.priceBdt));
   const [order, setOrder] = useState(String(service.displayOrder));
+  const [quantityMode, setQuantityMode] = useState(service.quantityMode ?? "auto");
+  const [customMin, setCustomMin] = useState(String(service.customMinQuantity ?? 1));
+  const [customMax, setCustomMax] = useState(String(service.customMaxQuantity ?? 100));
+  const providerQuantity =
+    service.minQuantity === service.maxQuantity
+      ? `always ${service.minQuantity}`
+      : `${service.minQuantity}–${service.maxQuantity}`;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -162,7 +169,16 @@ function ServiceForm({
     try {
       const result = await apiFetch<{ service: AdminRentServiceDTO }>(`/api/rent-services/${service.id}`, {
         method: "PATCH",
-        body: { title, description, icon, category, priceBdt: price, displayOrder: order },
+        body: {
+          title,
+          description,
+          icon,
+          category,
+          priceBdt: price,
+          displayOrder: order,
+          quantityMode,
+          ...(quantityMode === "open" ? { customMinQuantity: customMin, customMaxQuantity: customMax } : {}),
+        },
       });
       toast.success("Service updated.");
       onSaved(result.service);
@@ -227,6 +243,28 @@ function ServiceForm({
         onChange={setPrice}
         error={errors.priceBdt}
       />
+      <div>
+        <SelectField<AdminRentServiceDTO["quantityMode"]>
+          label="Order quantity"
+          value={quantityMode}
+          onChange={setQuantityMode}
+          error={errors.quantityMode}
+          options={[
+            { value: "auto", label: `Auto: from the provider (${providerQuantity})` },
+            { value: "locked", label: `Locked: always ${service.minQuantity}, no quantity box` },
+            { value: "open", label: "Open: customers choose, within my min–max" },
+          ]}
+        />
+        <p className="mt-1 text-xs text-admin-muted">
+          Use Open for credit services where customers buy several at once (e.g. 10 credits). Sync never changes this.
+        </p>
+      </div>
+      {quantityMode === "open" && (
+        <div className="grid grid-cols-2 gap-3">
+          <TextField label="Min quantity" type="number" value={customMin} onChange={setCustomMin} error={errors.customMinQuantity} />
+          <TextField label="Max quantity" type="number" value={customMax} onChange={setCustomMax} error={errors.customMaxQuantity} />
+        </div>
+      )}
       <TextField label="Display order" type="number" value={order} onChange={setOrder} error={errors.displayOrder} />
       <div className="flex justify-end gap-2 pt-2">
         <button type="button" onClick={onCancel} className="admin-btn admin-btn-secondary">

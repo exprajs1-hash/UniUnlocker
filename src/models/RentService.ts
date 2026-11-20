@@ -49,6 +49,10 @@ export interface IRentService {
   /** Quantity a customer may order, from the provider. 1–1 for services not sold by quantity. */
   minQuantity: number;
   maxQuantity: number;
+  /** Admin override of the provider's limits (see src/lib/quantity.ts). Sync never changes these. */
+  quantityMode: "auto" | "locked" | "open";
+  customMinQuantity: number;
+  customMaxQuantity: number;
   enabled: boolean;
   /** Admin pick: shown in the homepage "Featured Products" section. */
   featured: boolean;
@@ -95,6 +99,9 @@ const RentServiceSchema = new Schema<IRentService>(
     ],
     minQuantity: { type: Number, default: 1 },
     maxQuantity: { type: Number, default: 1 },
+    quantityMode: { type: String, enum: ["auto", "locked", "open"], default: "auto" },
+    customMinQuantity: { type: Number, default: 1 },
+    customMaxQuantity: { type: Number, default: 100 },
     enabled: { type: Boolean, default: false },
     featured: { type: Boolean, default: false },
     hot: { type: Boolean, default: false },
