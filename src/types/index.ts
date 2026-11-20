@@ -414,6 +414,8 @@ export interface AdminRentOrderDTO extends RentOrderDTO {
   checkError: string;
   /** The status value the provider last sent, as-is. */
   providerStatus: string;
+  /** The provider's last status reply as JSON, for the admin to see exactly what it sent. */
+  providerReply: string;
   lastCheckedAt: string | null;
   /** When the admin last changed the status or result by hand. */
   manualAt: string | null;

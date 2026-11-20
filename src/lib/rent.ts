@@ -455,7 +455,7 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
   const open = { _id: id, status: { $in: ["pending", "processing"] as RentOrderStatus[] } };
   if (status.state === "rejected") {
     await RentOrder.updateOne(open, {
-      $set: { result: status.result || "The order was rejected.", checkError: "", providerStatus: status.raw },
+      $set: { result: status.result || "The order was rejected.", checkError: "", providerStatus: status.raw, providerReply: status.reply },
     });
     await refundOrder(id, "rejected", `Refund: ${order.serviceName}`);
   } else if (status.state !== order.status) {
@@ -463,12 +463,12 @@ export async function refreshOrder(order: IRentOrder & { _id: unknown }, force =
     await RentOrder.updateOne(
       { _id: id, status: order.status },
       {
-        $set: { status: status.state, result: status.result, checkError: "", providerStatus: status.raw },
+        $set: { status: status.state, result: status.result, checkError: "", providerStatus: status.raw, providerReply: status.reply },
         $push: { statusHistory: { status: status.state, at: new Date() } },
       },
     );
   } else {
-    await RentOrder.updateOne(open, { $set: { result: status.result, checkError: "", providerStatus: status.raw } });
+    await RentOrder.updateOne(open, { $set: { result: status.result, checkError: "", providerStatus: status.raw, providerReply: status.reply } });
   }
   if (status.state === "completed" || status.state === "rejected") {
     await hideSensitiveFields(id);

@@ -336,6 +336,8 @@ export interface ProviderOrderStatus {
   result: string;
   /** The status value exactly as the provider sent it, shown to the admin. */
   raw: string;
+  /** The whole reply as JSON (cut at 4000 characters), so the admin can see what the provider sent. */
+  reply: string;
 }
 
 /** Strips the HTML the provider sometimes puts in results, keeping line breaks. */
@@ -427,11 +429,37 @@ export async function getProviderOrder(credentials: ProviderCredentials, referen
   }
 
   const raw = String(pick(result, "STATUS", "ORDERSTATUS") ?? "");
-  // Panels split a delivery across fields (e.g. username in CODE, password in COMMENTS), so keep every one.
+  return { state: parseProviderState(raw), result: deliveryText(result), raw, reply: JSON.stringify(result).slice(0, 4000) };
+}
+
+/** Reply keys that describe the order rather than deliver anything; never shown as the result. */
+const ORDER_META_KEYS = new Set(
+  [
+    "STATUS", "ORDERSTATUS", "IMEI", "ID", "ORDERID", "ORDER_ID", "REFERENCEID", "SERVICEID", "SERVICE", "SERVICENAME",
+    "PRICE", "CREDIT", "COST", "AMOUNT", "QNT", "QUANTITY", "DATE", "DATE_ADDED", "CREATED", "CREATED_AT", "UPDATED_AT",
+    "REPLYDATE", "TIME", "MESSAGE", "SUCCESS", "APIVERSION", "API_VERSION", "CURRENCY",
+  ].map((key) => key.toLowerCase()),
+);
+
+/**
+ * The delivered result as text. Panels split a delivery across fields (username in
+ * CODE, password in COMMENTS, or a field of its own such as PASSWORD), so CODE,
+ * RESULT and COMMENTS come first, then every other field that is not order info.
+ */
+export function deliveryText(reply: Record<string, unknown>): string {
   const parts: string[] = [];
-  for (const name of ["CODE", "RESULT", "COMMENTS"]) {
-    const text = resultText(pick(result, name));
-    if (text && !parts.includes(text)) parts.push(text);
+  // Skipped when the value already appears (some panels repeat the code in several fields).
+  const add = (text: string, shown = text) => {
+    if (text && !parts.some((part) => part.includes(text))) parts.push(shown);
+  };
+  for (const name of ["CODE", "RESULT", "COMMENTS"]) add(resultText(pick(reply, name)));
+  const main = new Set(["code", "result", "comments"]);
+  for (const [key, value] of Object.entries(reply)) {
+    const lower = key.toLowerCase();
+    if (main.has(lower) || ORDER_META_KEYS.has(lower) || value === null || value === undefined || value === "") continue;
+    const text = resultText(value);
+    // A bare value gets its key as the label, e.g. PASSWORD → "Password: abc".
+    add(text, typeof value === "object" || text.includes("\n") ? text : `${key.charAt(0).toUpperCase()}${key.slice(1).toLowerCase()}: ${text}`);
   }
-  return { state: parseProviderState(raw), result: parts.join("\n"), raw };
+  return parts.join("\n");
 }

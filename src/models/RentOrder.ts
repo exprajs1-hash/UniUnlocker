@@ -32,6 +32,8 @@ export interface IRentOrder {
   checkError: string;
   /** The status value the provider last sent, as-is (e.g. "4"). */
   providerStatus: string;
+  /** The provider's last status reply as JSON, for the admin to see exactly what it sent. */
+  providerReply: string;
   /** Set when the admin changed the status or result by hand. */
   manualAt: Date | null;
   /** Each status the order went through and when, for the customer's order timeline. */
@@ -63,6 +65,7 @@ const RentOrderSchema = new Schema<IRentOrder>(
     lastCheckedAt: { type: Date, default: null },
     checkError: { type: String, default: "" },
     providerStatus: { type: String, default: "" },
+    providerReply: { type: String, default: "" },
     manualAt: { type: Date, default: null },
     statusHistory: {
       type: [{ _id: false, status: { type: String, enum: RENT_ORDER_STATUSES }, at: Date }],

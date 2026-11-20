@@ -165,6 +165,14 @@ export function RentOrdersManager() {
                   ) : (
                     order.result && <p className="mt-2 text-sm whitespace-pre-line text-admin-muted">{order.result}</p>
                   )}
+                  {order.providerReply && (
+                    <details className="mt-2 text-xs text-admin-muted">
+                      <summary className="cursor-pointer select-none">Provider reply (what the provider sent)</summary>
+                      <pre className="mt-1 max-h-60 overflow-auto rounded-md bg-admin-line/20 p-2 whitespace-pre-wrap break-all">
+                        {order.providerReply}
+                      </pre>
+                    </details>
+                  )}
                   {open && order.checkError && (
                     <p className="mt-2 rounded-md bg-status-offline/10 px-3 py-2 text-xs text-status-offline">
                       Automatic status check failed: {order.checkError}. If the provider shows this order as done, use

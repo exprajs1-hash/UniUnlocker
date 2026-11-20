@@ -37,6 +37,7 @@ export const GET = adminRoute(async (request) => {
     adminNote: order.adminNote,
     checkError: order.checkError ?? "",
     providerStatus: order.providerStatus ?? "",
+    providerReply: order.providerReply ?? "",
     lastCheckedAt: order.lastCheckedAt ? new Date(order.lastCheckedAt).toISOString() : null,
     manualAt: order.manualAt ? new Date(order.manualAt).toISOString() : null,
     customer: customer ? { id: String(customer._id), name: customer.name, email: customer.email } : null,
